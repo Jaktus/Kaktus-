@@ -1,0 +1,27 @@
+punkte = 1
+
+print("was ist das Seltenste Item in Minecraft")
+speicher = input()
+
+
+if "Smaragt" == speicher:
+    print("Super")
+    #  TODO: punkte erhöhen
+    punkte += 2
+else:
+
+    print("Falsch")
+
+punkte = 2
+
+print("was ist das unseltenste Item in Minecraft")
+speicher = input()
+
+
+if "Holz Block" == speicher:
+    print("Super")
+    #  TODO: punkte erhöhen
+    punkte += 3
+else:
+
+    print("Falsch")

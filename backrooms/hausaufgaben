@@ -1,0 +1,7 @@
+# Gibt True zurück, falls das Produkt aus erstem und letztem Element in
+#zahlenliste positiv ist, ansonsten False.
+# Falls zahlenliste leer ist, wird False zurückgegeben.
+def erstes_mal_letztes_positiv(zahlenliste: list) -> bool:
+    return not zahlenliste or zahlenliste[0] * zahlenliste[-1] > 0
+
+

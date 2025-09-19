@@ -1,0 +1,13 @@
+{
+	"folders": [
+		{
+			"name": "Ghost",
+			"path": ".."
+		},
+		{
+			"name": "undergrounds",
+			"path": "../../../Documents/undergrounds"
+		}
+	],
+	"settings": {}
+}
