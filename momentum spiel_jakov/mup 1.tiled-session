@@ -1,0 +1,42 @@
+{
+    "Map/SizeTest": {
+        "height": 4300,
+        "width": 2
+    },
+    "activeFile": "levle.tmx",
+    "expandedProjectPaths": [
+        "."
+    ],
+    "file.lastUsedOpenFilter": "All Files (*)",
+    "fileStates": {
+        "jak.tsx": {
+            "dynamicWrapping": true,
+            "scaleInDock": 1,
+            "scaleInEditor": 1
+        },
+        "levle.tmx": {
+            "scale": 0.77,
+            "selectedLayer": 2,
+            "viewCenter": {
+                "x": 277.9220779220779,
+                "y": 331.8181818181818
+            }
+        }
+    },
+    "last.imagePath": "/Users/allgemein/momentum spiel",
+    "map.height": 12,
+    "map.lastUsedFormat": "tmx",
+    "map.tileHeight": 50,
+    "map.tileWidth": 50,
+    "openFiles": [
+        "levle.tmx",
+        "jak.tsx"
+    ],
+    "project": "mup 1.tiled-project",
+    "recentFiles": [
+        "jak.tsx",
+        "levle.tmx"
+    ],
+    "tileset.lastUsedFormat": "tsx",
+    "tileset.type": 1
+}
