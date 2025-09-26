@@ -31,18 +31,62 @@ class Spiel(arcade.View):
             arcade.load_texture("v_renen4.png"),
             arcade.load_texture("v_renen5.png")
         ]
+        self.h_rennen = [
+            arcade.load_texture("h_renen1.png"),
+            arcade.load_texture("h_renen2.png"),
+            arcade.load_texture("h_renen3.png"),
+            arcade.load_texture("h_renen4.png"),
+            arcade.load_texture("h_renen5.png")
+        ]
 
-        self.texture_index = 0  
+        self.l_rennen = [
+            arcade.load_texture("l_renen1.png"),
+            arcade.load_texture("l_renen2.png"),
+            arcade.load_texture("l_renen3.png"),
+            arcade.load_texture("l_renen4.png"),
+            arcade.load_texture("l_renen5.png")
+        ]
+
+        self.r_rennen = [
+            arcade.load_texture("r_renen1.png"),
+            arcade.load_texture("r_renen2.png"),
+            arcade.load_texture("r_renen3.png"),
+            arcade.load_texture("r_renen4.png"),
+            arcade.load_texture("r_renen5.png")
+        ]
+
+
+        self.letzte_richtung = "idle"
+        self.stop_animation_index = 0
+        self.stop_animation_timer = 0
+        self.stop_animation_aktiv = False
+        self.animations_timer = 0
+        self.texture_index = 0
+
+    def scroll_to_player(self):
+        ziel_position_x = self.mensch.center_x
+        ziel_position_y = self.mensch.center_y
+
+        if self.mensch.center_x < 450:
+            ziel_position_x = 450 
+        if self.mensch.center_x > 1150:
+            ziel_position_x = 1150
+        if self.mensch.center_y < 350:
+            ziel_position_y = 350
+        if self.mensch.center_y > 350:
+            ziel_position_y = 350
+
+        self.camera.position = (ziel_position_x, ziel_position_y)
 
     def on_key_press(self, symbol, modifiers):
         if symbol == arcade.key.W:
-            self.mensch.change_y = 1
+            self.mensch.change_y = 3
         elif symbol == arcade.key.S:
-            self.mensch.change_y = -1
+            self.mensch.change_y = -3
         elif symbol == arcade.key.A:
-            self.mensch.change_x = -1
+            self.mensch.change_x = -3
         elif symbol == arcade.key.D:
-            self.mensch.change_x = 1
+            self.mensch.change_x = 3
 
     def on_key_release(self, symbol, modifiers):
         if symbol in [arcade.key.W, arcade.key.S]:
@@ -55,31 +99,65 @@ class Spiel(arcade.View):
         self.spiel_physik.update()
         self.scroll_to_player()
 
-   
+        self.animations_timer += delta_time
+
         if self.mensch.change_x < 0:
-            self.texture_index = (self.texture_index + 1) % len(self.v_rennen)
-            self.mensch.texture = self.v_rennen[self.texture_index]
+            self.letzte_richtung = "links"
+        elif self.mensch.change_x > 0:
+            self.letzte_richtung = "rechts"
+        elif self.mensch.change_y > 0:
+            self.letzte_richtung = "oben"
+        elif self.mensch.change_y < 0:
+            self.letzte_richtung = "unten"
+
+        if self.mensch.change_x != 0 or self.mensch.change_y != 0:
+            self.stop_animation_aktiv = False
+            if self.animations_timer > 0.10:
+                self.texture_index = (self.texture_index + 1) % 5
+                self.animations_timer = 0
+
+                if self.letzte_richtung == "links":
+                    self.mensch.texture = self.h_rennen[self.texture_index]
+                elif self.letzte_richtung == "rechts":
+                    self.mensch.texture = self.v_rennen[self.texture_index]
+                elif self.letzte_richtung == "oben":
+                    self.mensch.texture = self.l_rennen[self.texture_index]
+                elif self.letzte_richtung == "unten":
+                    self.mensch.texture = self.r_rennen[self.texture_index]
+
         else:
-            self.mensch.texture = arcade.load_texture("fleisch-stück.png")
+            if not self.stop_animation_aktiv:
+                self.stop_animation_aktiv = True
+                self.stop_animation_index = 0
+                self.stop_animation_timer = 0
+
+            self.stop_animation_timer += delta_time
+            if self.stop_animation_index < 2 and self.stop_animation_timer > 0.15:
+                self.stop_animation_timer = 0
+                self.stop_animation_index += 1
+
+                if self.letzte_richtung == "links":
+                    self.mensch.texture = self.h_rennen[self.stop_animation_index]
+                elif self.letzte_richtung == "rechts":
+                    self.mensch.texture = self.v_rennen[self.stop_animation_index]
+                elif self.letzte_richtung == "oben":
+                    self.mensch.texture = self.l_rennen[self.stop_animation_index]
+                elif self.letzte_richtung == "unten":
+                    self.mensch.texture = self.r_rennen[self.stop_animation_index]
+            elif self.stop_animation_index >= 2:
+                if self.letzte_richtung == "links":
+                    self.mensch.texture = self.h_rennen[2]
+                elif self.letzte_richtung == "rechts":
+                    self.mensch.texture = self.v_rennen[2]
+                elif self.letzte_richtung == "oben":
+                    self.mensch.texture = self.l_rennen[2]
+                elif self.letzte_richtung == "unten":
+                    self.mensch.texture = self.r_rennen[2]
 
         if self.mensch.collides_with_list(self.scene["Tile Layer 2"]):
             self.mensch.stop()
             Shop_ansicht = Shop()
             self.window.show_view(Shop_ansicht)
-
-    def scroll_to_player(self):
-        ziel_position_x = self.mensch.center_x
-        ziel_position_y = self.mensch.center_y
-        if self.mensch.center_x < 450:
-            ziel_position_x = 450 
-        if self.mensch.center_x > 1150:
-            ziel_position_x = 1150
-        if self.mensch.center_y < 350:
-            ziel_position_y = 350
-        if self.mensch.center_y > 350:
-            ziel_position_y = 350
-        
-        self.camera.position = (ziel_position_x, ziel_position_y)
 
     def on_draw(self):
         self.clear()
@@ -91,18 +169,27 @@ class Shop(arcade.View):
     def __init__(self):
         super().__init__()
 
-        self.shop_list = arcade.SpriteList()
+        self.sho_list = arcade.SpriteList()
 
-        self.mensch = arcade.Sprite("shop.png", 1.2)
+        # hintergrund
+        self.mensch = arcade.Sprite("shop hintergrund.png")
         self.mensch.center_x = 1150
         self.mensch.center_y = 350
-        self.shop_list.append(self.mensch)  
+        self.sho_list.append(self.mensch)
+
+        # boton
+        self.CON = arcade.Sprite("CON_shop.png", 1.8)
+        self.CON.center_x = 1000
+        self.CON.center_y = 400
+        self.sho_list.append(self.CON)
 
     def on_mouse_press(self, x, y, button, modifiers):
         print(x, y, button)
-        if x < 262 and x > 95 and y > 251 and y < 283:
+        if 205 < x < 300 and 330 < y < 370:
+            print ("con")
             Shop_ansicht = Shop_con()
             self.window.show_view(Shop_ansicht)
+
 
     def on_key_press(self, symbol, modifiers):
         if symbol == arcade.key.ESCAPE:
@@ -111,8 +198,7 @@ class Shop(arcade.View):
 
     def on_draw(self):
         self.clear()
-        self.shop_list.draw()
-
+        self.sho_list.draw()
 class Shop_con(arcade.View):
     def __init__(self):
         super().__init__()
