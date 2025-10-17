@@ -132,7 +132,7 @@ class Spiel(arcade.View):
                 self.stop_animation_timer = 0
 
             self.stop_animation_timer += delta_time
-            if self.stop_animation_index < 2 and self.stop_animation_timer > 0.15:
+            if self.stop_animation_index < 2 and self.stop_animation_timer > 0.0015:
                 self.stop_animation_timer = 0
                 self.stop_animation_index += 1
 
@@ -155,9 +155,13 @@ class Spiel(arcade.View):
                     self.mensch.texture = self.r_rennen[2]
 
         if self.mensch.collides_with_list(self.scene["Tile Layer 2"]):
-            self.mensch.stop()
-            Shop_ansicht = Shop()
-            self.window.show_view(Shop_ansicht)
+            target_x =  450
+            target_y =  350
+            self.camera.position = (target_x, target_y)
+            if self.camera.position == (target_x, target_y):
+                self.mensch.stop()
+                Shop_ansicht = Shop()
+                self.window.show_view(Shop_ansicht)
 
     def on_draw(self):
         self.clear()
@@ -180,8 +184,13 @@ class Shop(arcade.View):
         # boton
         self.CON = arcade.Sprite("CON_shop.png", 1.8)
         self.CON.center_x = 1000
-        self.CON.center_y = 400
+        self.CON.center_y = 325
         self.sho_list.append(self.CON)
+
+        self.cON = arcade.Sprite("POW_up_shop.png", 2.0)
+        self.cON.center_x = 1150
+        self.cON.center_y = 325
+        self.sho_list.append(self.cON)
 
     def on_mouse_press(self, x, y, button, modifiers):
         print(x, y, button)
@@ -198,7 +207,8 @@ class Shop(arcade.View):
 
     def on_draw(self):
         self.clear()
-        self.sho_list.draw()
+        self.sho_list.draw(pixelated=True)
+
 class Shop_con(arcade.View):
     def __init__(self):
         super().__init__()
