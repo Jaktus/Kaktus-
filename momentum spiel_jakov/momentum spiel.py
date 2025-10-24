@@ -194,9 +194,14 @@ class Shop(arcade.View):
 
     def on_mouse_press(self, x, y, button, modifiers):
         print(x, y, button)
-        if 205 < x < 300 and 330 < y < 370:
+        if 205 < x < 273 and 255 < y < 290:
             print ("con")
             Shop_ansicht = Shop_con()
+            self.window.show_view(Shop_ansicht)
+
+        if 335 < x < 468 and 255 < y < 295:
+            print ("con")
+            Shop_ansicht = Shop_up()
             self.window.show_view(Shop_ansicht)
 
 
@@ -215,7 +220,52 @@ class Shop_con(arcade.View):
 
         self.shop_list = arcade.SpriteList()
 
-        self.mensch = arcade.Sprite("con shop.png", 1.2)
+        self.mensch = arcade.Sprite("shop hintergrund.png")
+        self.mensch.center_x = 1150
+        self.mensch.center_y = 350
+        self.shop_list.append(self.mensch) 
+
+        self.lv2_con = arcade.Sprite("lv2_con..png", 1.4)
+        self.lv2_con.center_x = 1250
+        self.lv2_con.center_y = 350
+        self.shop_list.append(self.lv2_con) 
+
+        self.lv1_con = arcade.Sprite("lv1_con.png", 1.4)
+        self.lv1_con.center_x = 1050
+        self.lv1_con.center_y = 350
+        self.shop_list.append(self.lv1_con) 
+
+    def on_mouse_press(self, x, y, button, modifiers):
+        print(x, y, button)
+        if 250 < x < 350 and 280 < y < 315:
+            print ("con")
+            Shop_ansicht = Shop_con()
+            self.window.show_view(Shop_ansicht)
+
+
+        print(x, y, button)
+        if 450 < x < 550 and 280 < y < 315:
+            print ("con")
+            Shop_ansicht = Shop_con()
+            self.window.show_view(Shop_ansicht)
+
+
+    def on_draw(self):
+        self.clear()
+        self.shop_list.draw(pixelated=True)
+
+    def on_key_press(self, symbol, modifiers):
+        if symbol == arcade.key.ESCAPE:
+            Shop_ansicht = Shop()
+            self.window.show_view(Shop_ansicht)
+
+class Shop_up(arcade.View):
+    def __init__(self):
+        super().__init__()
+
+        self.shop_list = arcade.SpriteList()
+
+        self.mensch = arcade.Sprite("shop hintergrund.png")
         self.mensch.center_x = 1150
         self.mensch.center_y = 350
         self.shop_list.append(self.mensch) 
