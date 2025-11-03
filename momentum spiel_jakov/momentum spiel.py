@@ -218,6 +218,9 @@ class Shop_con(arcade.View):
     def __init__(self):
         super().__init__()
 
+        lvl_1_con = 0
+        lvl_2_con = 0
+
         self.shop_list = arcade.SpriteList()
 
         self.mensch = arcade.Sprite("shop hintergrund.png")
@@ -238,16 +241,12 @@ class Shop_con(arcade.View):
     def on_mouse_press(self, x, y, button, modifiers):
         print(x, y, button)
         if 250 < x < 350 and 280 < y < 315:
-            print ("con")
-            Shop_ansicht = Shop_con()
-            self.window.show_view(Shop_ansicht)
+            print ("con lvl 1 ")
 
 
-        print(x, y, button)
         if 450 < x < 550 and 280 < y < 315:
-            print ("con")
-            Shop_ansicht = Shop_con()
-            self.window.show_view(Shop_ansicht)
+            print ("con lvl 2 ")
+
 
 
     def on_draw(self):
