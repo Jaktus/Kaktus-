@@ -1,140 +1,82 @@
-# ...existing code...
 import arcade
-import pymunk
 import math
-from typing import Dict
 
-SCREEN_WIDTH = 800
-SCREEN_HEIGHT = 600
-TITLE = "Ragdoll mit Physics"
-
-COLOR_TORSO = (32, 160, 64)
-COLOR_HEAD = (200, 180, 120)
-COLOR_LIMB = (100, 100, 220)
-
-class BodyPart:
-    def __init__(self, name: str, pymunk_body: pymunk.Body, pymunk_shape: pymunk.Shape, sprite: arcade.Sprite):
-        self.name = name
-        self.body = pymunk_body
-        self.shape = pymunk_shape
-        self.sprite = sprite
-
-class Ragdoll:
-    def __init__(self, space: pymunk.Space, x: float, y: float):
-        self.space = space
-        self.parts: Dict[str, BodyPart] = {}
-        self.joints = []
-        self._create_parts(x, y)
-        self._create_joints()
-
-    def _make_box_part(self, name, x, y, w, h, mass, color):
-        moment = pymunk.moment_for_box(mass, (w, h))
-        body = pymunk.Body(mass, moment)
-        body.position = x, y
-        shape = pymunk.Poly.create_box(body, (w, h))
-        shape.friction = 1.0
-        self.space.add(body, shape)
-        sprite = arcade.SpriteSolidColor(int(w), int(h), color)
-        sprite.center_x = x
-        sprite.center_y = y
-        part = BodyPart(name, body, shape, sprite)
-        self.parts[name] = part
-        return part
-
-    def _create_parts(self, x, y):
-        torso_w, torso_h = 40, 60
-        head_w, head_h = 36, 36
-        limb_w, limb_h = 12, 44
-        torso = self._make_box_part("torso", x, y, torso_w, torso_h, mass=3.0, color=COLOR_TORSO)
-        head = self._make_box_part("head", x, y + (torso_h/2 + head_h/2) + 2, head_w, head_h, mass=1.0, color=COLOR_HEAD)
-        left_arm = self._make_box_part("left_arm", x - (torso_w/2 + limb_w/2), y + 8, limb_w, limb_h, mass=0.6, color=COLOR_LIMB)
-        right_arm = self._make_box_part("right_arm", x + (torso_w/2 + limb_w/2), y + 8, limb_w, limb_h, mass=0.6, color=COLOR_LIMB)
-        left_leg = self._make_box_part("left_leg", x - 10, y - (torso_h/2 + limb_h/2), limb_w, limb_h, mass=1.0, color=COLOR_LIMB)
-        right_leg = self._make_box_part("right_leg", x + 10, y - (torso_h/2 + limb_h/2), limb_w, limb_h, mass=1.0, color=COLOR_LIMB)
-
-    def _create_joints(self):
-        torso = self.parts["torso"].body
-        torso_w, torso_h = 40, 60
-        def connect(a_body, b_body, anchor_a, anchor_b, min_angle=-math.pi/2, max_angle=math.pi/2, spring=None):
-            pj = pymunk.PinJoint(a_body, b_body, anchor_a, anchor_b)
-            self.space.add(pj)
-            self.joints.append(pj)
-            rl = pymunk.RotaryLimitJoint(a_body, b_body, min_angle, max_angle)
-            self.space.add(rl)
-            self.joints.append(rl)
-            if spring:
-                ds = pymunk.DampedSpring(a_body, b_body, anchor_a, anchor_b, rest_length=spring[0], stiffness=spring[1], damping=spring[2])
-                self.space.add(ds)
-                self.joints.append(ds)
-        head = self.parts["head"].body
-        connect(torso, head, (0, torso_h/2), (0, -18), min_angle=-0.6, max_angle=0.6, spring=(5, 400, 20))
-        left_arm = self.parts["left_arm"].body
-        right_arm = self.parts["right_arm"].body
-        connect(torso, left_arm, (-torso_w/2, 10), (0, 18), min_angle=-2.2, max_angle=0.2)
-        connect(torso, right_arm, (torso_w/2, 10), (0, 18), min_angle=-0.2, max_angle=2.2)
-        left_leg = self.parts["left_leg"].body
-        right_leg = self.parts["right_leg"].body
-        connect(torso, left_leg, (-10, -torso_h/2), (0, 18), min_angle=-1.5, max_angle=1.0)
-        connect(torso, right_leg, (10, -torso_h/2), (0, 18), min_angle=-1.0, max_angle=1.5)
-
-    def draw(self):
-        for p in self.parts.values():
-            p.sprite.center_x = p.body.position.x
-            p.sprite.center_y = p.body.position.y
-            p.sprite.angle = -math.degrees(p.body.angle)
-            p.sprite.draw()
-
-class PhysicsWindow(arcade.Window):
+class Spiel(arcade.View):
     def __init__(self):
-        super().__init__(SCREEN_WIDTH, SCREEN_HEIGHT, TITLE)
-        arcade.set_background_color(arcade.color.ALMOND)
-        self.space = pymunk.Space()
-        self.space.gravity = (0.0, -900.0)
-        floor_body = pymunk.Body(body_type=pymunk.Body.STATIC)
-        floor_shape = pymunk.Segment(floor_body, (0, 80), (SCREEN_WIDTH, 80), 1.0)
-        floor_shape.friction = 1.0
-        self.space.add(floor_body, floor_shape)
-        self.ragdoll = Ragdoll(self.space, SCREEN_WIDTH/2, SCREEN_HEIGHT/2 + 50)
-        self.mouse_body = pymunk.Body(body_type=pymunk.Body.KINEMATIC)
-        self.mouse_joint = None
-        self.picked_shape = None
+        super().__init__()
 
-    def on_draw(self):
-        arcade.start_render()
-        arcade.draw_rectangle_filled(SCREEN_WIDTH/2, 41, SCREEN_WIDTH, 82, arcade.color.DARK_SLATE_GRAY)
-        self.ragdoll.draw()
+        self.camera = arcade.Camera2D()
+        self.camera.match_window()
+
+        self.spieler_list = arcade.SpriteList()
+
+        self.arm_h = arcade.Sprite("hände und beine.png",  2.0)
+        self.arm_h.center_x = 404
+        self.arm_h.center_y = 315
+        self.spieler_list.append(self.arm_h)
+
+        self.body = arcade.Sprite("body.png",  2.0)
+        self.body.center_x = 400
+        self.body.center_y = 300
+        self.spieler_list.append(self.body)
+
+        self.arm_v = arcade.Sprite("hände und beine.png",  2.0)
+        self.arm_v.center_x = 400
+        self.arm_v.center_y = 315
+        self.spieler_list.append(self.arm_v)
+
+        self.mouse_x = 0
+        self.mouse_y = 0
+
+        self.arm_angle = 0.0
+        self.speed = 3
+
+    def on_mouse_motion(self, x: float, y: float, dx: float, dy: float):
+        self.mouse_x = x
+        self.mouse_y = y
 
     def on_update(self, delta_time: float):
-        steps = 3
-        for _ in range(steps):
-            self.space.step(delta_time / steps)
+        self.spieler_list.update()
 
-    def on_mouse_press(self, x, y, button, modifiers):
-        shapes = self.space.point_query(pymunk.Vec2d(x, y), 1, pymunk.ShapeFilter())
-        if shapes:
-            shape = shapes[0].shape
-            body = shape.body
-            self.mouse_body.position = x, y
-            pj = pymunk.PinJoint(self.mouse_body, body, (0,0), body.world_to_local((x,y)))
-            pj.max_force = 1e6
-            self.space.add(pj)
-            self.mouse_joint = pj
-            self.picked_shape = shape
+        x_diff = self.mouse_x - self.body.center_x
+        y_diff = self.mouse_y - self.body.center_y
+        
 
-    def on_mouse_release(self, x, y, button, modifiers):
-        if self.mouse_joint:
-            self.space.remove(self.mouse_joint)
-            self.mouse_joint = None
-            self.picked_shape = None
+        angle = math.degrees(math.atan2(y_diff, x_diff))
+        self.arm_angle = angle + 90
 
-    def on_mouse_drag(self, x, y, dx, dy, buttons, modifiers):
-        if self.mouse_joint:
-            self.mouse_body.position = x, y
 
-def main():
-    window = PhysicsWindow()
-    arcade.run()
+        distance = math.sqrt(x_diff * x_diff + y_diff * y_diff)
+        if distance > 5:
+            direction_x = x_diff / distance
+            direction_y = y_diff / distance
+            
 
-if __name__ == "__main__":
-    main()
-# ...existing code...
+            self.body.center_x += direction_x * self.speed * delta_time
+            self.body.center_y += direction_y * self.speed * delta_time
+            
+
+            radius = 35  
+            circle_x = self.body.center_x + radius * math.cos(math.radians(self.arm_angle))
+            circle_y = (self.body.center_y + 35) + radius * math.sin(math.radians(self.arm_angle))
+            
+
+            self.arm_h.center_x = circle_x
+            self.arm_h.center_y = circle_y
+            self.arm_v.center_x = circle_x
+            self.arm_v.center_y = circle_y
+
+        self.speed = 3  
+    def on_draw(self):
+        self.clear()
+
+        
+
+        self.spieler_list.draw(pixelated=True)
+
+
+
+spiel = arcade.Window(800, 600, "Speeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeed")
+spiel_ansicht = Spiel()
+spiel.show_view(spiel_ansicht)
+arcade.run()
