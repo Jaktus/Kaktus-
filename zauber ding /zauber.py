@@ -1,4 +1,3 @@
-# ...existing code...
 import arcade
 import math
 
@@ -16,17 +15,18 @@ class Spiel(arcade.View):
         self.arm_h.center_y = 350
         self.spieler_list.append(self.arm_h)
 
-        self.fuss = arcade.Sprite("hände und beine.png",  2.5)  
-        self.fuss.center_x = 375
-        self.fuss.center_y = 175
-        self.spieler_list.append(self.fuss)
+        self.fuss_h = arcade.Sprite("hände und beine.png",  2.5)
+        self.fuss_h.center_x = 400
+        self.fuss_h.center_y = 175
+        self.spieler_list.append(self.fuss_h)
 
-
-        self.kopf = arcade.Sprite("kopf.png",  2.0)
+        self.kopf_tex_r = arcade.load_texture("kopf.r.png")
+        self.kopf_tex_l = arcade.load_texture("kopf.l.png")
+        self.kopf = arcade.Sprite("kopf.png",  2.5)
         self.kopf.center_x = 395
-        self.kopf.center_y = 350
+        self.kopf.center_y = 340
+        self.kopf.texture = self.kopf_tex_r
         self.spieler_list.append(self.kopf)
-
 
         self.body = arcade.Sprite("body.png",  2.0)
         self.body_pos_x = 400
@@ -34,6 +34,11 @@ class Spiel(arcade.View):
         self.body.center_x = self.body_pos_x
         self.body.center_y = self.body_pos_y - 30
         self.spieler_list.append(self.body)
+
+        self.fuss_v = arcade.Sprite("hände und beine.png",  2.5)
+        self.fuss_v.center_x = 395
+        self.fuss_v.center_y = 175
+        self.spieler_list.append(self.fuss_v)
 
         self.arm_v = arcade.Sprite("hände und beine.png",  2.0)
         self.arm_v.center_x = 400
@@ -45,6 +50,8 @@ class Spiel(arcade.View):
 
         self.arm_angle = 0.0
         self.speed = 0
+
+        texture = arcade.load_texture("body.png")
 
     def on_mouse_motion(self, x: float, y: float, dx: float, dy: float):
         self.mouse_x = x
@@ -58,8 +65,6 @@ class Spiel(arcade.View):
 
         angle_rad = math.atan2(y_diff, x_diff)
         angle_deg = math.degrees(angle_rad)
-
-
 
         distance = math.hypot(x_diff, y_diff)
         if distance > 5:
@@ -86,6 +91,13 @@ class Spiel(arcade.View):
         self.body.center_x = self.body_pos_x
         self.body.center_y = self.body_pos_y - 30
 
+        self.kopf.center_x = self.body_pos_x - 5
+        self.kopf.center_y = self.body_pos_y + 50
+
+        if self.mouse_x > self.body_pos_x:
+            self.kopf.texture = self.kopf_tex_l
+        else:
+            self.kopf.texture = self.kopf_tex_r
 
     def on_draw(self):
         self.clear()
