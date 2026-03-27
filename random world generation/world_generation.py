@@ -1,22 +1,62 @@
 import arcade
 import random
-from pathlib import Path
 
 # Screen settings
 SCREEN_WIDTH = 1000
 SCREEN_HEIGHT = 700
 SCREEN_TITLE = "Procedural Supermarket Generation (No Walls)"
 
-TILE_SIZE = 64
-GRID_WIDTH = SCREEN_WIDTH // TILE_SIZE
-GRID_HEIGHT = SCREEN_HEIGHT // TILE_SIZE
+CELL_WIDTH = 20
+CELL_HEIGHT = 20
+SHELF_TILE = '-'
+EMPTY_TILE = '.'
 
-# Get directory where this script is located
-BASE_DIR = Path(__file__).parent
+BASE_LAYOUT_TEXT = '''
+----------              ----------
+  -  .     -              -  .  .  -
+  -        -              -        -
+  ----------              ----------
+  .  .  .  .  .  .  .  .  .  .  .  .  .  .
+  .  .  .  .  .  .  .  .  .  .  .  .  .  .
+                  ----------
+                  -        -
+                  -     .  -
+                  ----------
+  .  .  .  .  .  .  .  .  .  .  .  .  .  .
+  .  .  .  .  .  .  .  .  .  .  .  .  .  .
+  ----------
+  -     .  -              ----------
+  -  .     -              -  .  .  -
+  ----------
+'''
 
-# Build absolute paths to textures
-FLOOR_TEXTURE = BASE_DIR / "t..png"
-SHELF_TEXTURE = BASE_DIR / "s..png"
+
+def parse_base_layout(text):
+    lines = [line.rstrip() for line in text.splitlines() if line.strip()]
+    grid = []
+    max_len = 0
+    for line in lines:
+        row = ''.join(c for c in line if c in (SHELF_TILE, EMPTY_TILE))
+        max_len = max(max_len, len(row))
+        grid.append(row)
+    # Padding to square/rectangular
+    return [row.ljust(max_len, EMPTY_TILE) for row in grid]
+
+
+def generate_supermarket_layout(remove_probability=0.2):
+    base = parse_base_layout(BASE_LAYOUT_TEXT)
+    grid = []
+    for row in base:
+        new_row = ''.join(
+            EMPTY_TILE if c == SHELF_TILE and random.random() < remove_probability else c
+            for c in row
+        )
+        grid.append(new_row)
+    return grid
+
+
+def layout_to_ascii(grid):
+    return '\n'.join(' '.join(char for char in row) for row in grid)
 
 
 class SupermarketGame(arcade.Window):
@@ -26,30 +66,42 @@ class SupermarketGame(arcade.Window):
 
         self.shelf_list = arcade.SpriteList()
         self.floor_list = arcade.SpriteList()
+        self.layout = []
 
     def setup(self):
         self.shelf_list.clear()
         self.floor_list.clear()
 
-        for x in range(GRID_WIDTH):
-            for y in range(GRID_HEIGHT):
-                floor = arcade.Sprite(str(FLOOR_TEXTURE), scale=TILE_SIZE / 64)
-                floor.center_x = x * TILE_SIZE + TILE_SIZE // 2
-                floor.center_y = y * TILE_SIZE + TILE_SIZE // 2
-                self.floor_list.append(floor)
+        # Layout aus vorgegebenem Grundriss + einige zufällige Regale entfernt
+        self.layout = generate_supermarket_layout(remove_probability=0.22)
 
-        aisle_spacing = 3
-        for x in range(2, GRID_WIDTH - 2, aisle_spacing):
-            for y in range(2, GRID_HEIGHT - 2):
-                if random.random() > 0.1:
-                    shelf = arcade.Sprite(str(SHELF_TEXTURE), scale=TILE_SIZE / 64)
-                    shelf.center_x = x * TILE_SIZE + TILE_SIZE // 0.5
-                    shelf.center_y = y * TILE_SIZE + TILE_SIZE // 0.5
-                    
+        # Konsolenausgabe
+        print("\n=== Zufälliges Supermarkt-Layout ===")
+        print(layout_to_ascii(self.layout))
+
+        # Sprite-Grid aus Layout erzeugen
+        for row_index, row in enumerate(self.layout):
+            for col_index, tile in enumerate(row):
+                x = 50 + col_index * (CELL_WIDTH + 5)
+                y = SCREEN_HEIGHT - 50 - row_index * (CELL_HEIGHT + 5)
+
+                if tile == SHELF_TILE:
+                    shelf = arcade.SpriteSolidColor(CELL_WIDTH, CELL_HEIGHT, arcade.color.BROWN)
+                    shelf.center_x = x
+                    shelf.center_y = y
                     self.shelf_list.append(shelf)
+                else:
+                    floor = arcade.SpriteSolidColor(CELL_WIDTH, CELL_HEIGHT, arcade.color.LIGHT_GRAY)
+                    floor.center_x = x
+                    floor.center_y = y
+                    self.floor_list.append(floor)
+
+    def on_update(self, delta_time):
+        # Keine wiederholte Neugenerierung pro Frame
+        pass
 
     def on_draw(self):
-        arcade.start_render
+        self.clear()
         self.floor_list.draw()
         self.shelf_list.draw()
 
