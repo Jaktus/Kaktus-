@@ -1,7 +1,7 @@
 import pyglet
 import arcade
 import random
-from arcade.future.light import Light, LightLayer
+from arcade.experimental.lights import Light, LightLayer
 
 SCREEN_WIDTH = 800
 SCREEN_HEIGHT = 600
@@ -44,7 +44,7 @@ class Labyrinth(arcade.Window):
         self.player_list = arcade.SpriteList()
         self.wall_list = arcade.SpriteList()
 
-        self.player_sprite = arcade.Sprite("spieler 98*98.png", 0.6)
+        self.player_sprite = arcade.Sprite("spieler 98_98.png", 0.6)
         self.player_sprite.center_x = SCREEN_WIDTH // 2
         self.player_sprite.center_y = SCREEN_HEIGHT // 2
         self.player_list.append(self.player_sprite)
