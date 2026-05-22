@@ -102,3 +102,7 @@ func spawn_afterimage():
 		clone_sprite.frame = sprite.frame
 		clone_sprite.flip_h = sprite.flip_h
 		clone_sprite.visible = true
+
+
+func _on_area_2d_4_body_shape_entered(body_rid: RID, body: Node2D, body_shape_index: int, local_shape_index: int) -> void:
+	pass # Replace with function body.
