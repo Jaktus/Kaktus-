@@ -7,7 +7,7 @@ const MAX_JUMPS = 2
 
 const DASH_SPEED = 600.0
 const DASH_DURATION := 0.15
-const DASH_COOLDOWN := 0.8
+const DASH_COOLDOWN := 0.01
 const AFTERIMAGE_COUNT := 10
 const AFTERIMAGE_INTERVAL := 0.012
 

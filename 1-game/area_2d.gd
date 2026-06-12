@@ -7,7 +7,7 @@
 
 extends Area2D # Use Area3D for 3D games
 
-@export var jump_force: float = -800.0 # Negative for upward in 2D
+@export var jump_force: float = -1200.0 # Negative for upward in 2D
 
 func _on_body_entered(body):
 	# Check if the body entering is the player (adjust "Player" to your class name)
