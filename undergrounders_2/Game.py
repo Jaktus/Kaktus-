@@ -3,8 +3,8 @@ import random
 
 SCREEN_WIDTH  = 800
 SCREEN_HEIGHT = 600
-WORLD_WIDTH   = 16000
-WORLD_HEIGHT  = 16000
+WORLD_WIDTH   = 4000
+WORLD_HEIGHT  = 4000
 
 WALK_SPEED   = 2
 SPRINT_SPEED = 3
@@ -15,6 +15,10 @@ MINE_TIME   = 0.6
 HOTBAR_SLOTS = 9
 SLOT_SIZE    = 48
 SLOT_GAP     = 4
+
+TILE_SIZE       = 32
+DROP_JITTER     = 6
+STONE_TO_CRAFT  = 9
 
 # cumulative spawn chances (rarest first)
 ORE_TABLE = [
@@ -43,9 +47,14 @@ class MyGame(arcade.Window):
         self.mining_target   = None
         self.mining_progress = 0.0
         self.selected_slot   = 0
+        self.facing          = (0, -1)
+        self.show_crafting_gui = False
 
         # 9 slots: {"type": str|None, "count": int}
         self.hotbar = [{"type": None, "count": 0} for _ in range(HOTBAR_SLOTS)]
+
+        # (tile_x, tile_y) -> {"type": str, "sprites": [drop, ...]}
+        self.tile_stacks = {}
 
         self.setup()
         self.physics_engine = arcade.PhysicsEngineSimple(self.player, self.stone_list)
@@ -85,14 +94,16 @@ class MyGame(arcade.Window):
         self.gui_camera = arcade.Camera2D()
 
         self.textures = {
-            "slot":    arcade.load_texture("invent_slot.png"),
-            "pickaxe": arcade.load_texture("pickaxe.png"),
-            "coal":    arcade.load_texture("coal.png"),
-            "copper":  arcade.load_texture("copper.png"),
-            "iron":    arcade.load_texture("iron.png"),
-            "diamond": arcade.load_texture("diamond.png"),
-            "stone":   arcade.load_texture("stone.png"),
+            "slot":           arcade.load_texture("invent_slot.png"),
+            "pickaxe":        arcade.load_texture("pickaxe.png"),
+            "coal":           arcade.load_texture("coal.png"),
+            "copper":         arcade.load_texture("copper.png"),
+            "iron":           arcade.load_texture("iron.png"),
+            "diamond":        arcade.load_texture("diamond.png"),
+            "stone":          arcade.load_texture("stone.png"),
+            "crafting_block": arcade.load_texture("crafting_block.png"),
         }
+        self.crafting_gui_texture = arcade.load_texture("crafting_gui.png")
 
         # pickaxe starts in slot 0
         self.hotbar[0] = {"type": "pickaxe", "count": 1}
@@ -113,6 +124,61 @@ class MyGame(arcade.Window):
                 return True
         return False
 
+    def _front_tile(self):
+        fx, fy = self.facing
+        target_x = self.player.center_x + fx * TILE_SIZE
+        target_y = self.player.center_y + fy * TILE_SIZE
+        tile_x = round(target_x / TILE_SIZE) * TILE_SIZE
+        tile_y = round(target_y / TILE_SIZE) * TILE_SIZE
+        return tile_x, tile_y
+
+    def _spawn_crafting_block(self, tile_x, tile_y):
+        block = arcade.Sprite("crafting_block.png", 0.5)
+        block.center_x = tile_x
+        block.center_y = tile_y
+        block.ore_type = "crafting_block"
+        block.ore_tex  = "crafting_block.png"
+        self.stone_list.append(block)
+
+    def _register_tile_drop(self, tile_x, tile_y, item_type, drop_sprite):
+        if item_type != "stone":
+            return
+        key = (tile_x, tile_y)
+        stack = self.tile_stacks.get(key)
+        if stack is None or stack["type"] != item_type:
+            stack = {"type": item_type, "sprites": []}
+            self.tile_stacks[key] = stack
+        stack["sprites"].append(drop_sprite)
+
+        if len(stack["sprites"]) >= STONE_TO_CRAFT:
+            for sprite in stack["sprites"]:
+                sprite.remove_from_sprite_lists()
+            del self.tile_stacks[key]
+            self._spawn_crafting_block(tile_x, tile_y)
+
+    def _drop_selected_item(self):
+        slot = self.hotbar[self.selected_slot]
+        if not slot["type"] or slot["count"] <= 0:
+            return
+
+        item_type = slot["type"]
+        tile_x, tile_y = self._front_tile()
+
+        if item_type == "crafting_block":
+            self._spawn_crafting_block(tile_x, tile_y)
+        else:
+            drop = arcade.Sprite(f"{item_type}.png", 0.6)
+            drop.center_x  = tile_x + random.uniform(-DROP_JITTER, DROP_JITTER)
+            drop.center_y  = tile_y + random.uniform(-DROP_JITTER, DROP_JITTER)
+            drop.item_type = item_type
+            self.drop_list.append(drop)
+            self._register_tile_drop(tile_x, tile_y, item_type, drop)
+
+        slot["count"] -= 1
+        if slot["count"] <= 0:
+            slot["type"]  = None
+            slot["count"] = 0
+
     def _get_camera_pos(self):
         cam_x = max(SCREEN_WIDTH  / 2, min(self.player.center_x, WORLD_WIDTH  - SCREEN_WIDTH  / 2))
         cam_y = max(SCREEN_HEIGHT / 2, min(self.player.center_y, WORLD_HEIGHT - SCREEN_HEIGHT / 2))
@@ -124,6 +190,10 @@ class MyGame(arcade.Window):
             self.keys_pressed[key] = True
         if arcade.key.KEY_1 <= key <= arcade.key.KEY_9:
             self.selected_slot = key - arcade.key.KEY_1
+        if key == arcade.key.Q:
+            self._drop_selected_item()
+        if key == arcade.key.E:
+            self.show_crafting_gui = not self.show_crafting_gui
 
     def on_key_release(self, key, _modifiers):
         if key in self.keys_pressed:
@@ -170,6 +240,9 @@ class MyGame(arcade.Window):
         elif self.keys_pressed[arcade.key.S] and not self.keys_pressed[arcade.key.W]:
             move_y = -speed
 
+        if move_x != 0 or move_y != 0:
+            self.facing = ((move_x > 0) - (move_x < 0), (move_y > 0) - (move_y < 0))
+
         self.player.change_x = move_x
         self.player.change_y = move_y
         self.player_list.update()
@@ -185,8 +258,8 @@ class MyGame(arcade.Window):
                 if self.mining_progress >= MINE_TIME:
                     if self.mining_target.ore_type:
                         drop = arcade.Sprite(self.mining_target.ore_tex, 0.6)
-                        drop.center_x  = self.mining_target.center_x
-                        drop.center_y  = self.mining_target.center_y
+                        drop.center_x  = self.mining_target.center_x + random.uniform(-DROP_JITTER, DROP_JITTER)
+                        drop.center_y  = self.mining_target.center_y + random.uniform(-DROP_JITTER, DROP_JITTER)
                         drop.item_type = self.mining_target.ore_type
                         self.drop_list.append(drop)
                     self.mining_target.remove_from_sprite_lists()
@@ -218,6 +291,12 @@ class MyGame(arcade.Window):
 
         self.gui_camera.use()
         self._draw_hotbar()
+
+        if self.show_crafting_gui:
+            arcade.draw_texture_rect(
+                self.crafting_gui_texture,
+                arcade.XYWH(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2, SCREEN_WIDTH, SCREEN_HEIGHT),
+            )
 
     def _draw_hotbar(self):
         total = HOTBAR_SLOTS * SLOT_SIZE + (HOTBAR_SLOTS - 1) * SLOT_GAP
