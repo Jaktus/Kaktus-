@@ -24,7 +24,7 @@ MINE_TIME = {
     "hand":            1.0,
     "pickaxe":         0.6,
     "pickaxe_iron":    0.4,
-    "pickaxe_diamond": 0.25,
+    "pickaxe_diamond": 0.15,
 }
 
 HOTBAR_SLOTS = 9
@@ -174,7 +174,8 @@ class Inventory:
         self.mouse_pos     = (0, 0)
         self.craft_hint    = ""       # hinweis-text, z.b. "Braucht 3 Kohle!"
         self.chest         = None     # die kiste die gerade offen ist
-        self.drag_slots    = []       # slots ueber die man beim ziehen gefahren ist
+        self.drag_slots    = []       # slots die beim verteilen schon 1 bekommen haben
+        self.drag_source   = None     # quell-slot beim verteilen (rechtsklick gehalten)
 
         self.images = {
             "slot":            arcade.load_texture("invent_slot.png"),
@@ -321,11 +322,13 @@ class Inventory:
         return None
 
     def start_drag(self, x, y, only_one=False):
-        # item unter der maus in die hand nehmen, only_one=True nimmt nur 1 (rechtsklick)
+        # item unter der maus in die hand nehmen.
+        # linksklick bewegt den ganzen stapel, rechtsklick startet den verteil-modus
         slot = self.slot_at(x, y)
         if slot is None or slot["type"] is None:
             return
-        self.drag_slots = []   # frisch anfangen zu merken, wo die maus langfaehrt
+        self.drag_slots  = []
+        self.drag_source = None
 
         # aus dem output genommen = gebaut -> kohle und zutaten verbrauchen.
         # linksklick baut gleich so viele wie die zutaten hergeben, rechtsklick nur 1
@@ -337,55 +340,63 @@ class Inventory:
             self.check_recipe()
             return
 
-        if only_one and slot["count"] > 1:
-            self.in_hand = {"type": slot["type"], "count": 1}
-            slot["count"] = slot["count"] - 1
-        else:
-            self.in_hand = {"type": slot["type"], "count": slot["count"]}
-            self.clear_slot(slot)
+        self.in_hand = {"type": slot["type"], "count": slot["count"]}
+        self.clear_slot(slot)
+        if only_one:
+            # verteil-modus: quell-slot merken, da geht der rest spaeter zurueck.
+            # er steht auch in drag_slots, damit nicht in ihn selbst verteilt wird
+            self.drag_source = slot
+            self.drag_slots  = [slot]
 
         self.check_recipe()
 
     def track_drag(self, x, y):
-        # waehrend die maus mit einem stapel in der hand unterwegs ist:
-        # jeden passenden slot merken, ueber den sie faehrt
-        if self.in_hand is None:
+        # nur im verteil-modus (rechtsklick gehalten): jeder neue slot
+        # unter der maus bekommt sofort 1 item aus der hand
+        if self.in_hand is None or self.drag_source is None:
+            return
+        if self.in_hand["count"] <= 0:
             return
         slot = self.slot_at(x, y)
         if slot is None:
             return
         for done in self.drag_slots:
             if done is slot:
-                return   # den haben wir schon
+                return   # der hat schon eins bekommen
         if slot["kind"] == "output":
             return
         if slot["kind"] == "fuel" and self.in_hand["type"] != "coal":
             return
         if slot["type"] is not None and slot["type"] != self.in_hand["type"]:
             return
+
+        slot["type"]  = self.in_hand["type"]
+        slot["count"] = slot["count"] + 1
+        self.in_hand["count"] = self.in_hand["count"] - 1
         self.drag_slots.append(slot)
+        self.check_recipe()
 
     def end_drag(self, x, y):
         # item aus der hand in den slot unter der maus legen
         if self.in_hand is None:
             return
 
-        # ist die maus ueber mehrere slots gefahren? dann gleichmaessig verteilen
-        if len(self.drag_slots) >= 2:
-            each = self.in_hand["count"] // len(self.drag_slots)
-            rest = self.in_hand["count"] % len(self.drag_slots)
-            if each > 0:
-                for slot in self.drag_slots:
-                    slot["type"] = self.in_hand["type"]
-                    slot["count"] = slot["count"] + each
-                if rest > 0:
-                    # was nicht glatt aufgeht, geht zurueck in die hotbar
-                    self.add_to_hotbar(self.in_hand["type"], rest)
-                self.in_hand = None
-                self.drag_slots = []
-                self.check_recipe()
-                return
-        self.drag_slots = []
+        # verteil-modus: der slot unterm loslassen bekommt auch noch 1,
+        # der rest wandert zurueck in den quell-slot
+        if self.drag_source is not None:
+            self.track_drag(x, y)
+            if self.in_hand["count"] > 0:
+                source = self.drag_source
+                if source["type"] is None or source["type"] == self.in_hand["type"]:
+                    source["type"]  = self.in_hand["type"]
+                    source["count"] = source["count"] + self.in_hand["count"]
+                else:
+                    self.add_to_hotbar(self.in_hand["type"], self.in_hand["count"])
+            self.in_hand     = None
+            self.drag_source = None
+            self.drag_slots  = []
+            self.check_recipe()
+            return
 
         slot = self.slot_at(x, y)
 
@@ -933,6 +944,16 @@ class Game(arcade.Window):
         self.wire_list.draw()
         self.drop_list.draw()
         self.player_list.draw()
+
+        # rahmen um die kachel vor dem spieler (da landet alles was man mit q droppt)
+        frame = self.inventory.images["slot"]
+        tx, ty = self.tile_in_front()
+        arcade.draw_texture_rect(frame, arcade.XYWH(tx, ty, TILE_SIZE, TILE_SIZE))
+
+        # rahmen um den block der gerade abgebaut wird
+        if self.mine_target:
+            arcade.draw_texture_rect(frame, arcade.XYWH(
+                self.mine_target.center_x, self.mine_target.center_y, TILE_SIZE, TILE_SIZE))
 
         # fortschritts-balken ueber dem stein
         if self.mine_target:
