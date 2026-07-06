@@ -98,7 +98,9 @@ ORE_POOLS = {
 # welcher buchstabe fuer welches item in den rezepten steht.
 # kleiner buchstabe = material, grosser buchstabe = fertiger kopf daraus
 LETTERS = {
+    
     "stone":                "s",
+    "copper":               "c",
     "iron":                 "i",
     "diamond":              "d",
     "pickaxe_handle":       "h",
@@ -110,7 +112,11 @@ LETTERS = {
 # rezepte: einfach neue dazuschreiben! "." heisst leeres feld.
 # es zaehlt nur die form, egal wo im gitter sie liegt
 RECIPES = [
-    ("pickaxe_handle",       ["sss"]),              # 3 steine nebeneinander
+    ("pickaxe_handle",       ["sss"]),   
+    
+    ("wire",                 ["c",
+                              "c",
+                              "c"]),                # 3 kupfer uebereinander
     ("pickaxe_handle",       ["s..",
                               ".s.",
                               "..s"]),              # 3 steine diagonal
@@ -147,6 +153,7 @@ COAL_COST = {
     "pickaxe_head":         1,
     "pickaxe_iron_head":    1,
     "pickaxe_diamond_head": 1,
+    "wire":                 1,
     "hammer":               3,
     "pickaxe":              5,
     "pickaxe_iron":         5,
@@ -167,6 +174,7 @@ class Inventory:
         self.mouse_pos     = (0, 0)
         self.craft_hint    = ""       # hinweis-text, z.b. "Braucht 3 Kohle!"
         self.chest         = None     # die kiste die gerade offen ist
+        self.drag_slots    = []       # slots ueber die man beim ziehen gefahren ist
 
         self.images = {
             "slot":            arcade.load_texture("invent_slot.png"),
@@ -181,6 +189,7 @@ class Inventory:
             "pickaxe_handle":  arcade.load_texture("pickaxe_handle.png"),
             "pickaxe_head":    arcade.load_texture("pickaxe_head.png"),
             "hammer":          arcade.load_texture("hammer.png"),
+            "wire":            arcade.load_texture("wire.png"),
 
             "pickaxe_iron":         arcade.load_texture("pickaxe_iron.png"),
             "pickaxe_iron_head":    arcade.load_texture("pickaxe_iron_head.png"),
@@ -316,6 +325,17 @@ class Inventory:
         slot = self.slot_at(x, y)
         if slot is None or slot["type"] is None:
             return
+        self.drag_slots = []   # frisch anfangen zu merken, wo die maus langfaehrt
+
+        # aus dem output genommen = gebaut -> kohle und zutaten verbrauchen.
+        # linksklick baut gleich so viele wie die zutaten hergeben, rechtsklick nur 1
+        if slot["kind"] == "output":
+            n = 1 if only_one else self.max_crafts(slot["type"])
+            self.in_hand = {"type": slot["type"], "count": n}
+            self.pay_recipe(slot["type"], n)
+            self.clear_slot(slot)
+            self.check_recipe()
+            return
 
         if only_one and slot["count"] > 1:
             self.in_hand = {"type": slot["type"], "count": 1}
@@ -324,16 +344,49 @@ class Inventory:
             self.in_hand = {"type": slot["type"], "count": slot["count"]}
             self.clear_slot(slot)
 
-        # aus dem output genommen = gebaut -> kohle und zutaten verbrauchen
-        if slot["kind"] == "output":
-            self.pay_recipe(self.in_hand["type"])
-
         self.check_recipe()
+
+    def track_drag(self, x, y):
+        # waehrend die maus mit einem stapel in der hand unterwegs ist:
+        # jeden passenden slot merken, ueber den sie faehrt
+        if self.in_hand is None:
+            return
+        slot = self.slot_at(x, y)
+        if slot is None:
+            return
+        for done in self.drag_slots:
+            if done is slot:
+                return   # den haben wir schon
+        if slot["kind"] == "output":
+            return
+        if slot["kind"] == "fuel" and self.in_hand["type"] != "coal":
+            return
+        if slot["type"] is not None and slot["type"] != self.in_hand["type"]:
+            return
+        self.drag_slots.append(slot)
 
     def end_drag(self, x, y):
         # item aus der hand in den slot unter der maus legen
         if self.in_hand is None:
             return
+
+        # ist die maus ueber mehrere slots gefahren? dann gleichmaessig verteilen
+        if len(self.drag_slots) >= 2:
+            each = self.in_hand["count"] // len(self.drag_slots)
+            rest = self.in_hand["count"] % len(self.drag_slots)
+            if each > 0:
+                for slot in self.drag_slots:
+                    slot["type"] = self.in_hand["type"]
+                    slot["count"] = slot["count"] + each
+                if rest > 0:
+                    # was nicht glatt aufgeht, geht zurueck in die hotbar
+                    self.add_to_hotbar(self.in_hand["type"], rest)
+                self.in_hand = None
+                self.drag_slots = []
+                self.check_recipe()
+                return
+        self.drag_slots = []
+
         slot = self.slot_at(x, y)
 
         ok = slot is not None
@@ -420,14 +473,32 @@ class Inventory:
             self.output["count"] = 1
             return
 
-    def pay_recipe(self, item):
-        # kohle abziehen und das gitter leeren
-        self.fuel["count"] = self.fuel["count"] - COAL_COST[item]
+    def max_crafts(self, item):
+        # wie oft geht das rezept mit dem was gerade da liegt?
+        # das kleinste feld im gitter und die kohle begrenzen es
+        n = None
+        for row in self.grid:
+            for slot in row:
+                if slot["type"] is not None:
+                    if n is None or slot["count"] < n:
+                        n = slot["count"]
+        if n is None:
+            return 0
+        return min(n, self.fuel["count"] // COAL_COST[item])
+
+    def pay_recipe(self, item, n=1):
+        # kohle abziehen und aus jedem benutzten feld n zutaten nehmen,
+        # der rest bleibt liegen
+        self.fuel["count"] = self.fuel["count"] - COAL_COST[item] * n
         if self.fuel["count"] <= 0:
             self.clear_slot(self.fuel)
         for row in self.grid:
             for slot in row:
-                self.clear_slot(slot)
+                if slot["type"] is None:
+                    continue
+                slot["count"] = slot["count"] - n
+                if slot["count"] <= 0:
+                    self.clear_slot(slot)
 
     # ------------------------------------------------------------------
     # kisten
@@ -557,6 +628,7 @@ class Game(arcade.Window):
     def build_world(self):
         self.stone_list  = arcade.SpriteList(use_spatial_hash=True)
         self.drop_list   = arcade.SpriteList(use_spatial_hash=True)
+        self.wire_list   = arcade.SpriteList(use_spatial_hash=True)   # wires: nicht in der physik, man laeuft durch
         self.table_list  = arcade.SpriteList()   # alle crafting tables in der welt
         self.chest_list  = arcade.SpriteList()   # alle kisten in der welt
         self.player_list = arcade.SpriteList()
@@ -622,6 +694,8 @@ class Game(arcade.Window):
             chest.items.append({"type": None, "count": 0})
         self.stone_list.append(chest)
         self.chest_list.append(chest)
+        
+    
 
     def chest_nearby(self):
         # gibt eine kiste zurueck die nah genug am spieler ist, sonst None
@@ -639,6 +713,23 @@ class Game(arcade.Window):
                 drop.center_y = chest.center_y + random.uniform(-TILE_SIZE, TILE_SIZE)
                 drop.item_type = slot["type"]
                 self.drop_list.append(drop)
+                
+    def place_wire(self, tile_x, tile_y):
+        wire = arcade.Sprite("wire.png", )
+        wire.center_x = tile_x
+        wire.center_y = tile_y
+        wire.ore_type = "wire"
+        self.wire_list.append(wire)
+        #es wird in die richtung in die der spieler schaut gelegt, also muss man die richtung merken
+        if self.facing == (0, -1):
+            wire.angle = 0
+        elif self.facing == (0, 1):
+            wire.angle = 180
+        elif self.facing == (-1, 0):
+            wire.angle = 90
+        elif self.facing == (1, 0):
+            wire.angle = 270
+        
 
     def stones_on_tile(self, tile_x, tile_y):
         # alle stein-drops einsammeln die auf dieser kachel liegen
@@ -665,6 +756,9 @@ class Game(arcade.Window):
         if item_type == "chest":
             self.place_chest(tile_x, tile_y)
             return
+        if item_type == "wire":
+            self.place_wire(tile_x, tile_y)
+            return
 
         drop = arcade.Sprite(f"{item_type}.png", 0.6)
         drop.center_x = tile_x + random.uniform(-DROP_JITTER, DROP_JITTER)
@@ -688,7 +782,7 @@ class Game(arcade.Window):
 
     def give_all_ores(self):
         for ore in ["stone", "coal", "copper", "iron", "diamond"]:
-            self.inventory.add_to_hotbar(ore, 999)
+            self.inventory.add_to_hotbar(ore, 9)
 
     def update_mining(self, delta_time):
         if not self.mine_target:
@@ -763,6 +857,7 @@ class Game(arcade.Window):
     def on_mouse_motion(self, x, y, _dx, _dy):
         self.mouse_pos = (x, y)
         self.inventory.mouse_pos = (x, y)
+        self.inventory.track_drag(x, y)
 
     def on_mouse_scroll(self, _x, _y, _scroll_x, scroll_y):
         # das % laesst die auswahl am ende wieder umspringen
@@ -784,6 +879,9 @@ class Game(arcade.Window):
         world_y = y + cam_y - SCREEN_HEIGHT / 2
 
         hits = arcade.get_sprites_at_point((world_x, world_y), self.stone_list)
+        if not hits:
+            # nichts festes getroffen? dann vielleicht ein wire
+            hits = arcade.get_sprites_at_point((world_x, world_y), self.wire_list)
         if not hits:
             return
 
@@ -832,6 +930,7 @@ class Game(arcade.Window):
 
         self.camera.use()
         self.stone_list.draw()
+        self.wire_list.draw()
         self.drop_list.draw()
         self.player_list.draw()
 
