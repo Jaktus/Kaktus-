@@ -116,7 +116,9 @@ RECIPES = [
     
     ("wire",                 ["c",
                               "c",
-                              "c"]),                # 3 kupfer uebereinander
+                              "c"]),
+    ("wire_curve",           ["cc",
+                              ".c"]),
     ("pickaxe_handle",       ["s..",
                               ".s.",
                               "..s"]),              # 3 steine diagonal
@@ -147,6 +149,7 @@ RECIPES = [
 
 # wie viel kohle jedes rezept aus dem kohle-slot verbraucht
 COAL_COST = {
+    "wire_curve":           1,
     "pickaxe_handle":       1,
     "crafting_block":       1,
     "chest":                1,
@@ -178,6 +181,7 @@ class Inventory:
         self.drag_source   = None     # quell-slot beim verteilen (rechtsklick gehalten)
 
         self.images = {
+            "wire_curve":      arcade.load_texture("wire_curve.png"),
             "slot":            arcade.load_texture("invent_slot.png"),
             "pickaxe":         arcade.load_texture("pickaxe.png"),
             "coal":            arcade.load_texture("coal.png"),
@@ -741,6 +745,21 @@ class Game(arcade.Window):
         elif self.facing == (1, 0):
             wire.angle = 270
         
+    def place_wire_curve(self, tile_x, tile_y):
+        wire_c = arcade.Sprite("wire_curve.png", )
+        wire_c.center_x = tile_x
+        wire_c.center_y = tile_y
+        wire_c.ore_type = "wire_curve"
+        self.wire_list.append(wire_c)
+        #es wird in die richtung in die der spieler schaut gelegt, also muss man die richtung merken
+        if self.facing == (0, -1):
+            wire_c.angle = 0
+        elif self.facing == (0, 1):
+            wire_c.angle = 180
+        elif self.facing == (-1, 0):
+            wire_c.angle = 90
+        elif self.facing == (1, 0):
+            wire_c.angle = 270
 
     def stones_on_tile(self, tile_x, tile_y):
         # alle stein-drops einsammeln die auf dieser kachel liegen
@@ -769,6 +788,9 @@ class Game(arcade.Window):
             return
         if item_type == "wire":
             self.place_wire(tile_x, tile_y)
+            return
+        if item_type == "wire_curve":
+            self.place_wire_curve(tile_x, tile_y)
             return
 
         drop = arcade.Sprite(f"{item_type}.png", 0.6)
