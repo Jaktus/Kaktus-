@@ -19,6 +19,9 @@ SPRINT_SPEED = 3
 
 MINE_RANGE = 48    # wie nah man am stein sein muss
 
+PLAYER_FRAME_TIME = 0.18   # so viele sekunden wird jeder lauf-frame gezeigt
+PLAYER_SCALE      = 3      # wie gross der spieler gezeichnet wird
+
 # wie viele sekunden das abbauen dauert, pro werkzeug
 MINE_TIME = {
     "hand":            1.0,
@@ -648,7 +651,20 @@ class Game(arcade.Window):
         self.chest_list  = arcade.SpriteList()   # alle kisten in der welt
         self.player_list = arcade.SpriteList()
 
-        self.player = arcade.Sprite("player.png", 1)
+        # je 2 lauf-frames pro blickrichtung; nach links wird einfach gespiegelt
+        vorne  = [arcade.load_texture("player1.png"), arcade.load_texture("player2.png")]
+        seite  = [arcade.load_texture("player3.png"), arcade.load_texture("player4.png")]
+        hinten = [arcade.load_texture("player5.png"), arcade.load_texture("player6.png")]
+        self.player_textures = {
+            (0, -1): vorne,
+            (0, 1):  hinten,
+            (1, 0):  seite,
+            (-1, 0): [seite[0].flip_left_right(), seite[1].flip_left_right()],
+        }
+        self.walk_frame = 0     # welcher der 2 lauf-frames gerade dran ist
+        self.walk_timer = 0.0   # zaehlt die zeit bis zum naechsten frame-wechsel
+
+        self.player = arcade.Sprite(vorne[0], 1)
         self.player.center_x = WORLD_WIDTH / 2
         self.player.center_y = WORLD_HEIGHT / 2
         self.player_list.append(self.player)
@@ -934,6 +950,16 @@ class Game(arcade.Window):
         self.mine_target   = None
         self.mine_progress = 0.0
 
+    def player_texture(self):
+        # sucht das passende bild zur blickrichtung aus.
+        # bei diagonalem laufen gewinnt die seitenansicht
+        fx, fy = self.facing
+        if fx != 0:
+            frames = self.player_textures[(fx, 0)]
+        else:
+            frames = self.player_textures[(0, fy)]
+        return frames[self.walk_frame]
+
     def on_update(self, delta_time):
         sprinting = self.keys[arcade.key.LSHIFT] or self.keys[arcade.key.RSHIFT]
         speed = SPRINT_SPEED if sprinting else WALK_SPEED
@@ -943,6 +969,16 @@ class Game(arcade.Window):
         dir_y = self.keys[arcade.key.W] - self.keys[arcade.key.S]
         if dir_x or dir_y:
             self.facing = (dir_x, dir_y)
+            # beim laufen zwischen den 2 frames hin und her wechseln
+            self.walk_timer += delta_time
+            if self.walk_timer >= PLAYER_FRAME_TIME:
+                self.walk_timer -= PLAYER_FRAME_TIME
+                self.walk_frame = 1 - self.walk_frame
+        else:
+            # stillstehen: immer der erste frame
+            self.walk_frame = 0
+            self.walk_timer = 0.0
+        self.player.texture = self.player_texture()
 
         self.player.change_x = dir_x * speed
         self.player.change_y = dir_y * speed
@@ -965,7 +1001,8 @@ class Game(arcade.Window):
         self.stone_list.draw()
         self.wire_list.draw()
         self.drop_list.draw()
-        self.player_list.draw()
+        #make player bigger
+        self.player_list.draw(pixelated=True)
 
         # rahmen um die kachel vor dem spieler (da landet alles was man mit q droppt)
         frame = self.inventory.images["slot"]
@@ -991,4 +1028,4 @@ class Game(arcade.Window):
 
 Game()
 arcade.run()
-#chest.png
+#player1.png, player2.png, player3.png, player4.png, player5.png, player6.png das sind alle in zweier packs die richtungeng player1.png = nach unten, player2.png = nach unten aber ein pixel nach unten versetzt das soll jede sekunde wechseln wenn man nach unten läuft, player3.png = nach rechts, player4.png = nach rechts wieder versetzt, player5.png = nach oben, player6.png = oben wieder versetzt nach links machst du mit die richtung wechseln also umdrehen 
