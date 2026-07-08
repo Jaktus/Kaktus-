@@ -28,8 +28,8 @@ PLAYER_SCALE      = 1      # wie gross der spieler gezeichnet wird
 # licht: ohne lampe sieht man nur so viel (schwarz = stockdunkel)
 AMBIENT_COLOR      = (10, 10, 60)
 PLAYER_LIGHT_SIZE  = 100   # radius vom licht das dem spieler folgt
-TORCH_LIGHT_SIZE   = 150   # radius vom licht einer fackel
-TORCH_LIGHT_COLOR  = (220, 220, 255)   # warmes feuer-orange
+TORCH_LIGHT_SIZE   = 280   # radius vom licht einer fackel
+TORCH_LIGHT_COLOR  = (235, 245, 255)   # kuehles blau-weiss, fast volle helligkeit
 
 # wie viele sekunden das abbauen dauert, pro werkzeug
 MINE_TIME = {
