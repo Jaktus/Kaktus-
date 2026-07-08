@@ -135,8 +135,9 @@ RECIPES = [
     ("wire",                 ["c",
                               "c",
                               "c"]),
-    ("wire_curve",           ["cc",
-                              ".c"]),
+    ("generator",            ["iii",
+                              "ici",
+                              "iii"]),              # 8 eisen um 1 kupfer
     ("pickaxe_handle",       ["s..",
                               ".s.",
                               "..s"]),              # 3 steine diagonal
@@ -169,7 +170,7 @@ RECIPES = [
 COAL_COST = {
     "copper_stick":         1,
     "torch":                1,
-    "wire_curve":           1,
+    "generator":            3,
     "pickaxe_handle":       1,
     "crafting_block":       1,
     "chest":                1,
@@ -201,7 +202,6 @@ class Inventory:
         self.drag_source   = None     # quell-slot beim verteilen (rechtsklick gehalten)
 
         self.images = {
-            "wire_curve":      arcade.load_texture("wire_curve.png"),
             "slot":            arcade.load_texture("invent_slot.png"),
             "pickaxe":         arcade.load_texture("pickaxe.png"),
             "coal":            arcade.load_texture("coal.png"),
@@ -217,6 +217,7 @@ class Inventory:
             "wire":            arcade.load_texture("wire.png"),
             "copper_stick":    arcade.load_texture("copper_stick.png"),
             "torch":           arcade.load_texture("torch.png"),
+            "generator":       arcade.load_texture("generator.png"),
 
             "pickaxe_iron":         arcade.load_texture("pickaxe_iron.png"),
             "pickaxe_iron_head":    arcade.load_texture("pickaxe_iron_head.png"),
@@ -666,6 +667,13 @@ class Game(arcade.Window):
         self.stone_list  = arcade.SpriteList(use_spatial_hash=True)
         self.drop_list   = arcade.SpriteList(use_spatial_hash=True)
         self.walk_through_list   = arcade.SpriteList(use_spatial_hash=True)   # wires: nicht in der physik, man laeuft durch
+
+        # die zwei gesichter eines wires: gerade (oben+unten) und
+        # kurve (unten+links). welches dran ist entscheiden die nachbarn
+        self.wire_textures = {
+            "gerade": arcade.load_texture("wire.png"),
+            "kurve":  arcade.load_texture("wire_curve.png"),
+        }
         self.table_list  = arcade.SpriteList()   # alle crafting tables in der welt
         self.chest_list  = arcade.SpriteList()   # alle kisten in der welt
         self.player_list = arcade.SpriteList()
@@ -788,32 +796,65 @@ class Game(arcade.Window):
         wire.center_y = tile_y
         wire.ore_type = "wire"
         self.walk_through_list.append(wire)
-        #es wird in die richtung in die der spieler schaut gelegt, also muss man die richtung merken
-        if self.facing == (0, -1):
-            wire.angle = 0
-        elif self.facing == (0, 1):
-            wire.angle = 180
-        elif self.facing == (-1, 0):
+        # wie redstone: das neue wire und seine nachbarn richten sich
+        # automatisch nach ihren anschluessen aus
+        self.update_wire_look(wire)
+        self.update_wires_around(tile_x, tile_y)
+
+    def wire_at(self, x, y):
+        # das wire das genau auf dieser kachel liegt, sonst None
+        for sprite in self.walk_through_list:
+            if sprite.ore_type == "wire" and sprite.center_x == x and sprite.center_y == y:
+                return sprite
+        return None
+
+    def connects_at(self, x, y):
+        # zaehlt diese kachel als anschluss? (wire oder generator)
+        if self.wire_at(x, y):
+            return True
+        for sprite in arcade.get_sprites_at_point((x, y), self.stone_list):
+            if sprite.ore_type == "generator":
+                return True
+        return False
+
+    def update_wire_look(self, wire):
+        # das wire schaut sich seine 4 nachbarn an und waehlt selber
+        # bild und drehung, wie redstone in minecraft
+        oben   = self.connects_at(wire.center_x, wire.center_y + TILE_SIZE)
+        unten  = self.connects_at(wire.center_x, wire.center_y - TILE_SIZE)
+        links  = self.connects_at(wire.center_x - TILE_SIZE, wire.center_y)
+        rechts = self.connects_at(wire.center_x + TILE_SIZE, wire.center_y)
+
+        # genau 2 anschluesse ueber-eck -> kurve.
+        # wire_curve.png verbindet unten+links, angle dreht im uhrzeigersinn
+        kurven = {
+            (False, True,  True,  False): 0,     # unten + links
+            (True,  False, True,  False): 90,    # oben + links
+            (True,  False, False, True ): 180,   # oben + rechts
+            (False, True,  False, True ): 270,   # unten + rechts
+        }
+        nachbarn = (oben, unten, links, rechts)
+        if nachbarn in kurven:
+            wire.texture = self.wire_textures["kurve"]
+            wire.angle = kurven[nachbarn]
+            return
+
+        # alles andere wird gerade: senkrecht, ausser die anschluesse
+        # sind nur links/rechts
+        wire.texture = self.wire_textures["gerade"]
+        if (links or rechts) and not (oben or unten):
             wire.angle = 90
-        elif self.facing == (1, 0):
-            wire.angle = 270
-        
-    def place_wire_curve(self, tile_x, tile_y):
-        wire_c = arcade.Sprite("wire_curve.png", )
-        wire_c.center_x = tile_x
-        wire_c.center_y = tile_y
-        wire_c.ore_type = "wire_curve"
-        self.walk_through_list.append(wire_c)
-        #es wird in die richtung in die der spieler schaut gelegt, also muss man die richtung merken
-        if self.facing == (0, -1):
-            wire_c.angle = 0
-        elif self.facing == (0, 1):
-            wire_c.angle = 180
-        elif self.facing == (-1, 0):
-            wire_c.angle = 90
-        elif self.facing == (1, 0):
-            wire_c.angle = 270
-            
+        else:
+            wire.angle = 0
+
+    def update_wires_around(self, tile_x, tile_y):
+        # die wires auf den 4 nachbar-kacheln passen sich neu an
+        for dx, dy in [(0, 1), (0, -1), (-1, 0), (1, 0)]:
+            wire = self.wire_at(tile_x + dx * TILE_SIZE, tile_y + dy * TILE_SIZE)
+            if wire:
+                self.update_wire_look(wire)
+
+
     def place_torch(self, tile_x, tile_y):
         torch = arcade.Sprite("torch.png", )
         torch.center_x = tile_x
@@ -826,6 +867,24 @@ class Game(arcade.Window):
         torch.light = Light(tile_x, tile_y, TORCH_LIGHT_SIZE, TORCH_LIGHT_COLOR, "soft")
         self.light_layer.add(torch.light)
         
+    def place_generator(self, tile_x, tile_y):
+        gen = arcade.Sprite("generator.png", 1)
+        gen.center_x = tile_x
+        gen.center_y = tile_y
+        gen.ore_type = "generator"   # gibt sich beim abbauen selber zurueck
+        self.stone_list.append(gen)  # fest: man laeuft nicht durch
+        # generator.png guckt nach rechts, angle dreht im uhrzeigersinn
+        if self.facing == (1, 0):
+            gen.angle = 90
+        elif self.facing == (0, -1):
+            gen.angle = 180
+        elif self.facing == (-1, 0):
+            gen.angle = 270
+        elif self.facing == (0, 1):
+            gen.angle = 0
+        # wires daneben duerfen sich gleich mit ihm verbinden
+        self.update_wires_around(tile_x, tile_y)
+
     def stones_on_tile(self, tile_x, tile_y):
         # alle stein-drops einsammeln die auf dieser kachel liegen
         stones = []
@@ -854,11 +913,11 @@ class Game(arcade.Window):
         if item_type == "wire":
             self.place_wire(tile_x, tile_y)
             return
-        if item_type == "wire_curve":
-            self.place_wire_curve(tile_x, tile_y)
-            return
         if item_type == "torch":
             self.place_torch(tile_x, tile_y)
+            return
+        if item_type == "generator":
+            self.place_generator(tile_x, tile_y)
             return
 
         drop = arcade.Sprite(f"{item_type}.png", 0.6)
@@ -924,6 +983,12 @@ class Game(arcade.Window):
             self.light_layer.remove(self.mine_target.light)
 
         self.mine_target.remove_from_sprite_lists()
+
+        # war es ein wire oder generator? dann richten sich die
+        # nachbar-wires neu aus
+        if self.mine_target.ore_type in ("wire", "generator"):
+            self.update_wires_around(self.mine_target.center_x, self.mine_target.center_y)
+
         self.mine_target   = None
         self.mine_progress = 0.0
 
@@ -1044,6 +1109,8 @@ class Game(arcade.Window):
         self.player.center_x = self.player_hitbox.center_x
         self.player.center_y = self.player_hitbox.center_y
         self.player_light.position = self.player.position
+        
+        
 
         self.update_mining(delta_time)
 
