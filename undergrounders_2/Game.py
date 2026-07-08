@@ -129,8 +129,6 @@ RECIPES = [
     ("pickaxe_handle",       ["sss"]),
     
     ("copper_stick",         ["c",
-                              "c",
-                              "c",
                               "c"]),                # 4 kupfer nebeneinander
     ("torch",                ["o",
                               "k"]),                # kohle auf kupferstab
