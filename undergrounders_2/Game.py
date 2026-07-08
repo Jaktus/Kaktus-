@@ -1,5 +1,7 @@
 import arcade
+from arcade.future.light import Light, LightLayer
 import random
+
 
 # undergrounders 2
 # steuerung:
@@ -14,13 +16,20 @@ SCREEN_HEIGHT = 600
 WORLD_WIDTH   = 4000
 WORLD_HEIGHT  = 4000
 
+
 WALK_SPEED   = 2
 SPRINT_SPEED = 3
 
 MINE_RANGE = 48    # wie nah man am stein sein muss
 
 PLAYER_FRAME_TIME = 0.18   # so viele sekunden wird jeder lauf-frame gezeigt
-PLAYER_SCALE      = 3      # wie gross der spieler gezeichnet wird
+PLAYER_SCALE      = 1      # wie gross der spieler gezeichnet wird
+
+# licht: ohne lampe sieht man nur so viel (schwarz = stockdunkel)
+AMBIENT_COLOR      = (10, 10, 60)
+PLAYER_LIGHT_SIZE  = 100   # radius vom licht das dem spieler folgt
+TORCH_LIGHT_SIZE   = 150   # radius vom licht einer fackel
+TORCH_LIGHT_COLOR  = (220, 220, 255)   # warmes feuer-orange
 
 # wie viele sekunden das abbauen dauert, pro werkzeug
 MINE_TIME = {
@@ -103,6 +112,8 @@ ORE_POOLS = {
 LETTERS = {
     
     "stone":                "s",
+    "copper_stick":         "k",   # muss genau 1 zeichen sein!
+    "coal":                 "o",
     "copper":               "c",
     "iron":                 "i",
     "diamond":              "d",
@@ -115,8 +126,14 @@ LETTERS = {
 # rezepte: einfach neue dazuschreiben! "." heisst leeres feld.
 # es zaehlt nur die form, egal wo im gitter sie liegt
 RECIPES = [
-    ("pickaxe_handle",       ["sss"]),   
+    ("pickaxe_handle",       ["sss"]),
     
+    ("copper_stick",         ["c",
+                              "c",
+                              "c",
+                              "c"]),                # 4 kupfer nebeneinander
+    ("torch",                ["o",
+                              "k"]),                # kohle auf kupferstab
     ("wire",                 ["c",
                               "c",
                               "c"]),
@@ -152,6 +169,8 @@ RECIPES = [
 
 # wie viel kohle jedes rezept aus dem kohle-slot verbraucht
 COAL_COST = {
+    "copper_stick":         1,
+    "torch":                1,
     "wire_curve":           1,
     "pickaxe_handle":       1,
     "crafting_block":       1,
@@ -198,6 +217,8 @@ class Inventory:
             "pickaxe_head":    arcade.load_texture("pickaxe_head.png"),
             "hammer":          arcade.load_texture("hammer.png"),
             "wire":            arcade.load_texture("wire.png"),
+            "copper_stick":    arcade.load_texture("copper_stick.png"),
+            "torch":           arcade.load_texture("torch.png"),
 
             "pickaxe_iron":         arcade.load_texture("pickaxe_iron.png"),
             "pickaxe_iron_head":    arcade.load_texture("pickaxe_iron_head.png"),
@@ -641,12 +662,12 @@ class Game(arcade.Window):
         self.mouse_pos     = (0, 0)
 
         self.build_world()
-        self.physics = arcade.PhysicsEngineSimple(self.player, self.stone_list)
+        self.physics = arcade.PhysicsEngineSimple(self.player_hitbox, self.stone_list)
 
     def build_world(self):
         self.stone_list  = arcade.SpriteList(use_spatial_hash=True)
         self.drop_list   = arcade.SpriteList(use_spatial_hash=True)
-        self.wire_list   = arcade.SpriteList(use_spatial_hash=True)   # wires: nicht in der physik, man laeuft durch
+        self.walk_through_list   = arcade.SpriteList(use_spatial_hash=True)   # wires: nicht in der physik, man laeuft durch
         self.table_list  = arcade.SpriteList()   # alle crafting tables in der welt
         self.chest_list  = arcade.SpriteList()   # alle kisten in der welt
         self.player_list = arcade.SpriteList()
@@ -664,10 +685,17 @@ class Game(arcade.Window):
         self.walk_frame = 0     # welcher der 2 lauf-frames gerade dran ist
         self.walk_timer = 0.0   # zaehlt die zeit bis zum naechsten frame-wechsel
 
-        self.player = arcade.Sprite(vorne[0], 1)
+        self.player = arcade.Sprite(vorne[0], PLAYER_SCALE)
         self.player.center_x = WORLD_WIDTH / 2
         self.player.center_y = WORLD_HEIGHT / 2
         self.player_list.append(self.player)
+
+        # unsichtbare hitbox: nur sie steckt in der physik.
+        # sie ist in keiner draw-liste, darum sieht man sie nie.
+        # das sichtbare bild folgt ihr einfach jeden frame
+        self.player_hitbox = arcade.Sprite("player_hitbox.png", 1)
+        self.player_hitbox.center_x = self.player.center_x
+        self.player_hitbox.center_y = self.player.center_y
 
         # ganze welt mit steinen fuellen, nur die mitte bleibt frei (spawn)
         for x in range(0, WORLD_WIDTH, TILE_SIZE):
@@ -688,6 +716,17 @@ class Game(arcade.Window):
         self.camera     = arcade.Camera2D()   # folgt dem spieler
         self.gui_camera = arcade.Camera2D()   # bleibt fest, fuer die hotbar
 
+        # licht-schicht: alles was von licht getroffen werden soll wird
+        # da reingezeichnet, danach macht sie den rest dunkel
+        self.light_layer = LightLayer(SCREEN_WIDTH, SCREEN_HEIGHT)
+        self.light_layer.set_background_color(arcade.color.DARK_SLATE_GRAY)
+
+        # das licht das dem spieler folgt
+        self.player_light = Light(
+            self.player.center_x, self.player.center_y,
+            PLAYER_LIGHT_SIZE, arcade.csscolor.WHITE, "soft")
+        self.light_layer.add(self.player_light)
+
     def mine_time(self):
         # bessere werkzeuge bauen schneller ab
         return MINE_TIME[self.inventory.current_tool()]
@@ -695,8 +734,8 @@ class Game(arcade.Window):
     def tile_in_front(self):
         # die kachel direkt vor dem spieler, auf das raster gerundet
         fx, fy = self.facing
-        tile_x = round((self.player.center_x + fx * TILE_SIZE) / TILE_SIZE) * TILE_SIZE
-        tile_y = round((self.player.center_y + fy * TILE_SIZE) / TILE_SIZE) * TILE_SIZE
+        tile_x = round((self.player_hitbox.center_x + fx * TILE_SIZE) / TILE_SIZE) * TILE_SIZE
+        tile_y = round((self.player_hitbox.center_y + fy * TILE_SIZE) / TILE_SIZE) * TILE_SIZE
         return tile_x, tile_y
 
     def place_crafting_block(self, tile_x, tile_y):
@@ -710,7 +749,7 @@ class Game(arcade.Window):
     def near_crafting_table(self):
         # steht irgendein crafting table nah genug am spieler?
         for table in self.table_list:
-            if arcade.get_distance_between_sprites(self.player, table) <= CRAFT_TABLE_RANGE:
+            if arcade.get_distance_between_sprites(self.player_hitbox, table) <= CRAFT_TABLE_RANGE:
                 return True
         return False
 
@@ -731,7 +770,7 @@ class Game(arcade.Window):
     def chest_nearby(self):
         # gibt eine kiste zurueck die nah genug am spieler ist, sonst None
         for chest in self.chest_list:
-            if arcade.get_distance_between_sprites(self.player, chest) <= CRAFT_TABLE_RANGE:
+            if arcade.get_distance_between_sprites(self.player_hitbox, chest) <= CRAFT_TABLE_RANGE:
                 return chest
         return None
 
@@ -750,7 +789,7 @@ class Game(arcade.Window):
         wire.center_x = tile_x
         wire.center_y = tile_y
         wire.ore_type = "wire"
-        self.wire_list.append(wire)
+        self.walk_through_list.append(wire)
         #es wird in die richtung in die der spieler schaut gelegt, also muss man die richtung merken
         if self.facing == (0, -1):
             wire.angle = 0
@@ -766,7 +805,7 @@ class Game(arcade.Window):
         wire_c.center_x = tile_x
         wire_c.center_y = tile_y
         wire_c.ore_type = "wire_curve"
-        self.wire_list.append(wire_c)
+        self.walk_through_list.append(wire_c)
         #es wird in die richtung in die der spieler schaut gelegt, also muss man die richtung merken
         if self.facing == (0, -1):
             wire_c.angle = 0
@@ -776,7 +815,19 @@ class Game(arcade.Window):
             wire_c.angle = 90
         elif self.facing == (1, 0):
             wire_c.angle = 270
+            
+    def place_torch(self, tile_x, tile_y):
+        torch = arcade.Sprite("torch.png", )
+        torch.center_x = tile_x
+        torch.center_y = tile_y
+        torch.ore_type = "torch"
+        self.walk_through_list.append(torch)
 
+        # das licht sitzt genau auf der fackel. wir merken es uns am
+        # sprite, damit wir es beim abbauen wieder ausmachen koennen
+        torch.light = Light(tile_x, tile_y, TORCH_LIGHT_SIZE, TORCH_LIGHT_COLOR, "soft")
+        self.light_layer.add(torch.light)
+        
     def stones_on_tile(self, tile_x, tile_y):
         # alle stein-drops einsammeln die auf dieser kachel liegen
         stones = []
@@ -808,6 +859,9 @@ class Game(arcade.Window):
         if item_type == "wire_curve":
             self.place_wire_curve(tile_x, tile_y)
             return
+        if item_type == "torch":
+            self.place_torch(tile_x, tile_y)
+            return
 
         drop = arcade.Sprite(f"{item_type}.png", 0.6)
         drop.center_x = tile_x + random.uniform(-DROP_JITTER, DROP_JITTER)
@@ -838,7 +892,7 @@ class Game(arcade.Window):
             return
 
         # zu weit weggelaufen? dann abbrechen
-        if arcade.get_distance_between_sprites(self.player, self.mine_target) > MINE_RANGE:
+        if arcade.get_distance_between_sprites(self.player_hitbox, self.mine_target) > MINE_RANGE:
             self.mine_target   = None
             self.mine_progress = 0.0
             return
@@ -866,6 +920,10 @@ class Game(arcade.Window):
             drop.center_y = self.mine_target.center_y + random.uniform(-DROP_JITTER, DROP_JITTER)
             drop.item_type = loot
             self.drop_list.append(drop)
+
+        # fackeln nehmen ihr licht mit
+        if hasattr(self.mine_target, "light"):
+            self.light_layer.remove(self.mine_target.light)
 
         self.mine_target.remove_from_sprite_lists()
         self.mine_target   = None
@@ -930,12 +988,12 @@ class Game(arcade.Window):
         hits = arcade.get_sprites_at_point((world_x, world_y), self.stone_list)
         if not hits:
             # nichts festes getroffen? dann vielleicht ein wire
-            hits = arcade.get_sprites_at_point((world_x, world_y), self.wire_list)
+            hits = arcade.get_sprites_at_point((world_x, world_y), self.walk_through_list)
         if not hits:
             return
 
         stone = hits[0]
-        if arcade.get_distance_between_sprites(self.player, stone) <= MINE_RANGE:
+        if arcade.get_distance_between_sprites(self.player_hitbox, stone) <= MINE_RANGE:
             self.mine_target   = stone
             self.mine_progress = 0.0
 
@@ -980,15 +1038,19 @@ class Game(arcade.Window):
             self.walk_timer = 0.0
         self.player.texture = self.player_texture()
 
-        self.player.change_x = dir_x * speed
-        self.player.change_y = dir_y * speed
-        self.player_list.update()
-        self.physics.update()
+        self.player_hitbox.change_x = dir_x * speed
+        self.player_hitbox.change_y = dir_y * speed
+        self.physics.update()   # bewegt die hitbox und stoppt sie an steinen
+
+        # das sichtbare bild und das licht folgen der hitbox
+        self.player.center_x = self.player_hitbox.center_x
+        self.player.center_y = self.player_hitbox.center_y
+        self.player_light.position = self.player.position
 
         self.update_mining(delta_time)
 
         # drops einsammeln die der spieler beruehrt
-        for drop in arcade.check_for_collision_with_list(self.player, self.drop_list):
+        for drop in arcade.check_for_collision_with_list(self.player_hitbox, self.drop_list):
             if self.inventory.add_to_hotbar(drop.item_type, 1):
                 drop.remove_from_sprite_lists()
 
@@ -998,11 +1060,14 @@ class Game(arcade.Window):
         self.clear()
 
         self.camera.use()
-        self.stone_list.draw()
-        self.wire_list.draw()
-        self.drop_list.draw()
-        #make player bigger
-        self.player_list.draw(pixelated=True)
+        # alles in diesem with-block landet erst in der licht-schicht,
+        # nicht auf dem bildschirm. beim draw danach wird es beleuchtet
+        with self.light_layer:
+            self.stone_list.draw()
+            self.walk_through_list.draw()
+            self.drop_list.draw()
+            self.player_list.draw(pixelated=True)
+        self.light_layer.draw(ambient_color=AMBIENT_COLOR)
 
         # rahmen um die kachel vor dem spieler (da landet alles was man mit q droppt)
         frame = self.inventory.images["slot"]
