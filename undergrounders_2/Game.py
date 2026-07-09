@@ -45,6 +45,9 @@ CHARGING_DOC_LIGHT_COLOR = (140, 255, 170)   # gruenes lade-licht
 DRILL_CHARGE_TIME = 30    # sekunden am dock bis der drill voll ist
 DRILL_POWER_TIME  = 120   # so lange haelt eine volle ladung (2 minuten)
 
+# der drill-block: sammelt von alleine erze solange er strom hat (anschluss unten)
+DRILL_FARM_TIME = 5   # alle so viele sekunden kommt 1 erz in seinen speicher
+
 # wie viele sekunden das abbauen dauert, pro werkzeug
 MINE_TIME = {
     "hand":            1.0,
@@ -128,6 +131,8 @@ ORE_POOLS = {
 LETTERS = {
     
     "stone":                "s",
+    "iron_drill_base":      "b",
+    "iron_drill_drill":     "R",   # "D" war schon vom diamant-kopf besetzt!
     "generator":            "g",
     "wire":                 "w",
     "copper_stick":         "k",   # muss genau 1 zeichen sein!
@@ -139,12 +144,14 @@ LETTERS = {
     "pickaxe_head":         "S",
     "pickaxe_iron_head":    "I",
     "pickaxe_diamond_head": "D",
+    "battery":              "B",
 }
 
 # rezepte: einfach neue dazuschreiben! "." heisst leeres feld.
 # es zaehlt nur die form, egal wo im gitter sie liegt
 RECIPES = [
     ("pickaxe_handle",       ["sss"]),
+    ("battery",              ["ioi",]),
     ("charging_doc",         ["iii",
                               "igi",
                               "iii",
@@ -158,10 +165,20 @@ RECIPES = [
                               "c"]),
     ("generator",            ["iii",
                               "ici",
-                              "iii"]),              # 8 eisen um 1 kupfer
-    ("iron_drill",           ["iii",
-                              "idi",
-                              ".k."]),              # eisen-gehaeuse, diamant-bohrkopf, kupferstab-griff
+                              "iii"]),  
+    ("drill",                ["iiiii",
+                              "idddi",
+                              "idkdi",
+                              "idddi",
+                              "iiiii"]),          # eisen aussenrum, diamanten innen, kupferstab im zentrum
+    ("iron_drill_base",      ["iii",
+                              "iBi",
+                              "iii",
+                              "iii"]),
+    ("iron_drill_drill",     [".c.",
+                              "cic"]),
+    ("iron_drill",           ["R",
+                              "b"]),              # eisen-gehaeuse, diamant-bohrkopf, kupferstab-griff
     ("pickaxe_handle",       ["s..",
                               ".s.",
                               "..s"]),              # 3 steine diagonal
@@ -197,6 +214,9 @@ COAL_COST = {
     "torch":                1,
     "generator":            3,
     "iron_drill":           5,
+    "drill":                10,
+    "iron_drill_base":      5,
+    "iron_drill_drill":     5,
     "pickaxe_handle":       1,
     "crafting_block":       1,
     "chest":                1,
@@ -208,10 +228,11 @@ COAL_COST = {
     "pickaxe":              5,
     "pickaxe_iron":         5,
     "pickaxe_diamond":      5,
+    "battery":              2,
 }
 
 # diese rezepte gehen nur wenn ein hammer in der hotbar liegt
-NEEDS_HAMMER = ["pickaxe", "pickaxe_iron", "pickaxe_diamond", "charging_doc", "iron_drill"]
+NEEDS_HAMMER = ["pickaxe_iron", "pickaxe_diamond", "charging_doc", "iron_drill"]
 
 # diese bloecke brauchen strom: wires verbinden sich automatisch mit ihnen.
 # trag hier einfach den ore_type von deinen maschinen ein!
@@ -252,6 +273,10 @@ class Inventory:
             "generator":       arcade.load_texture("generator.png"),
             "energy":          arcade.load_texture("energy_gui.png"),
             "iron_drill":      arcade.load_texture("iron_drill.png"),
+            "drill":           arcade.load_texture("drill.png"),
+            "iron_drill_base": arcade.load_texture("iron_drill_base.png"),
+            "iron_drill_drill": arcade.load_texture("iron_drill_drill.png"),
+            "battery":           arcade.load_texture("battery.png"),
 
             "pickaxe_iron":         arcade.load_texture("pickaxe_iron.png"),
             "pickaxe_iron_head":    arcade.load_texture("pickaxe_iron_head.png"),
@@ -766,6 +791,7 @@ class Game(arcade.Window):
         self.chest_list  = arcade.SpriteList()   # alle kisten in der welt
         self.generator_list = arcade.SpriteList()   # alle generatoren in der welt
         self.charging_doc_list = arcade.SpriteList()   # alle charging docs in der welt
+        self.drill_list = arcade.SpriteList()   # alle drill-bloecke in der welt
 
         # der drill gehoert dem spieler: so viele sekunden power sind noch drin
         self.drill_charge = 0.0
@@ -1014,7 +1040,7 @@ class Game(arcade.Window):
             if sprite.ore_type == "generator" or sprite.ore_type in NEEDS_POWER:
                 return True
             # das charging doc hat seinen anschluss nur unten
-            if sprite.ore_type == "charging_doc" and von_unten:
+            if sprite.ore_type in ("charging_doc", "drill") and von_unten:
                 return True
         return False
 
@@ -1097,17 +1123,78 @@ class Game(arcade.Window):
         gen.light = None       # das licht wenn er strom macht
         self.stone_list.append(gen)  # fest: man laeuft nicht durch
         self.generator_list.append(gen)
-        # generator.png guckt nach rechts, angle dreht im uhrzeigersinn
-        if self.facing == (1, 0):
-            gen.angle = 90
-        elif self.facing == (0, -1):
-            gen.angle = 180
-        elif self.facing == (-1, 0):
-            gen.angle = 270
-        elif self.facing == (0, 1):
-            gen.angle = 0
+        gen.angle = self.facing_angle()
         # wires daneben duerfen sich gleich mit ihm verbinden
         self.update_wires_around(tile_x, tile_y)
+
+    def facing_angle(self):
+        # in welche richtung der spieler schaut, als drehwinkel fuer
+        # maschinen. auch beim diagonalen laufen kommt was raus:
+        # dann gewinnt links/rechts
+        fx, fy = self.facing
+        if fx > 0:
+            return 90    # rechts
+        if fx < 0:
+            return 270   # links
+        if fy < 0:
+            return 180   # runter
+        return 0         # hoch
+
+    def place_drill(self, tile_x, tile_y):
+        drill = arcade.Sprite("drill.png", 1)
+        drill.center_x = tile_x
+        drill.center_y = tile_y
+        drill.ore_type = "drill"   # gibt sich beim abbauen selber zurueck
+        drill.angle = self.facing_angle()
+        drill.powered = False
+        drill.farm_timer = 0.0     # zaehlt die zeit bis zum naechsten erz
+        # eigene faecher wie eine kiste - e macht den speicher auf
+        drill.items = []
+        for i in range(CHEST_ROWS * CHEST_COLS):
+            drill.items.append({"type": None, "count": 0})
+        self.stone_list.append(drill)   # fest: man laeuft nicht durch
+        self.drill_list.append(drill)
+        self.chest_list.append(drill)   # so oeffnet e ihn wie eine kiste
+        # das wire unter ihm darf sich gleich verbinden
+        self.update_wires_around(tile_x, tile_y)
+
+    def update_drill_machines(self, delta_time):
+        # ein drill mit strom (anschluss unten, wie beim charging doc)
+        # sammelt von alleine erze in seine faecher
+        for drill in self.drill_list:
+            unten_x = drill.center_x
+            unten_y = drill.center_y - TILE_SIZE
+            an = False
+            wire = self.wire_at(unten_x, unten_y)
+            if wire is not None and wire in self.powered_wires:
+                an = True
+            for gen in self.generator_list:
+                if gen.burn_timer > 0 and gen.center_x == unten_x and gen.center_y == unten_y:
+                    an = True
+            drill.powered = an
+            if not an:
+                continue
+
+            drill.farm_timer += delta_time
+            if drill.farm_timer >= DRILL_FARM_TIME:
+                drill.farm_timer = 0.0
+                # gleicher lostopf wie die diamant-spitzhacke
+                erz = random.choice(ORE_POOLS["pickaxe_diamond"])
+                if erz is not None:
+                    self.put_in_storage(drill.items, erz)
+
+    def put_in_storage(self, items, item_type):
+        # erst auf einen gleichen stapel legen, sonst leeres fach nehmen
+        for slot in items:
+            if slot["type"] == item_type:
+                slot["count"] += 1
+                return True
+        for slot in items:
+            if slot["type"] is None:
+                slot["type"] = item_type
+                slot["count"] = 1
+                return True
+        return False   # alle faecher voll
 
     def stones_on_tile(self, tile_x, tile_y):
         # alle stein-drops einsammeln die auf dieser kachel liegen
@@ -1217,6 +1304,9 @@ class Game(arcade.Window):
         if item_type == "charging_doc":
             self.place_charging_doc(tile_x, tile_y)
             return
+        if item_type == "drill":
+            self.place_drill(tile_x, tile_y)
+            return
         if item_type == "iron_drill":
             # vor einem leeren dock? dann wird der drill eingelegt
             doc = self.charging_doc_at(tile_x, tile_y)
@@ -1248,7 +1338,7 @@ class Game(arcade.Window):
         return x, y
 
     def give_all_ores(self):
-        for ore in ["stone", "coal", "copper", "iron", "charging_doc", "wire", "generator", "chest","iron_drill"]:
+        for ore in ["stone", "coal", "copper", "iron", "diamond", "wire", "generator", "drill" ]:
             self.inventory.add_to_hotbar(ore, 9)
 
     def update_mining(self, delta_time):
@@ -1265,8 +1355,8 @@ class Game(arcade.Window):
         if self.mine_progress < self.mine_time():
             return
 
-        # kisten verschuetten beim kaputtgehen ihren inhalt
-        if self.mine_target.ore_type == "chest":
+        # kisten und drills verschuetten beim kaputtgehen ihren inhalt
+        if self.mine_target.ore_type in ("chest", "drill"):
             self.spill_chest(self.mine_target)
 
         # ein dock mit drill drin gibt den drill zurueck
@@ -1310,7 +1400,7 @@ class Game(arcade.Window):
 
         # war es ein wire oder generator? dann richten sich die
         # nachbar-wires neu aus
-        if self.mine_target.ore_type in ("wire", "generator", "charging_doc"):
+        if self.mine_target.ore_type in ("wire", "generator", "charging_doc", "drill"):
             self.update_wires_around(self.mine_target.center_x, self.mine_target.center_y)
 
         self.mine_target   = None
@@ -1475,6 +1565,7 @@ class Game(arcade.Window):
         self.update_power()
         self.update_charging_docs()
         self.update_drill(delta_time)
+        self.update_drill_machines(delta_time)
 
         # drops einsammeln die der spieler beruehrt
         for drop in arcade.check_for_collision_with_list(self.player_hitbox, self.drop_list):
