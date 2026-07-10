@@ -695,8 +695,10 @@ class Inventory:
                 last["y"] - SLOT_SIZE, first["y"] + SLOT_SIZE,
                 (40, 40, 40, 230),
             )
+            # drills benutzen das gleiche menue, kriegen aber ihren eigenen titel
+            titel = "Drill" if self.chest.ore_type == "drill" else "Kiste"
             arcade.draw_text(
-                "Kiste",
+                titel,
                 SCREEN_WIDTH / 2, first["y"] + SLOT_SIZE / 2 + 6,
                 arcade.color.WHITE, font_size=14, anchor_x="center",
             )
@@ -962,7 +964,11 @@ class Game(arcade.Window):
             an = gen.burn_timer > 0
             self.set_light(gen, an, GENERATOR_LIGHT_SIZE, GENERATOR_LIGHT_COLOR)
             if an:
-                zu_pruefen.append((gen.center_x, gen.center_y))
+                # strom kommt nur am anschluss raus (dreht sich mit!)
+                wire = self.wire_at(*self.port_tile(gen))
+                if wire is not None and wire not in versorgt:
+                    versorgt.append(wire)
+                    zu_pruefen.append((wire.center_x, wire.center_y))
 
         while zu_pruefen:
             x, y = zu_pruefen.pop()
@@ -1031,26 +1037,54 @@ class Game(arcade.Window):
                 return sprite
         return None
 
-    def connects_at(self, x, y, von_unten=False):
-        # zaehlt diese kachel als anschluss? (wire oder generator)
-        # von_unten heisst: das fragende wire liegt direkt unter der kachel
+    def port_tile(self, sprite):
+        # die kachel auf die der strom-anschluss von einer maschine zeigt.
+        # ungedreht (angle 0) ist der anschluss unten, und weil angle im
+        # uhrzeigersinn dreht, dreht er sich einfach mit
+        if sprite.angle == 90:
+            return (sprite.center_x - TILE_SIZE, sprite.center_y)
+        if sprite.angle == 180:
+            return (sprite.center_x, sprite.center_y + TILE_SIZE)
+        if sprite.angle == 270:
+            return (sprite.center_x + TILE_SIZE, sprite.center_y)
+        return (sprite.center_x, sprite.center_y - TILE_SIZE)
+
+    def power_at_port(self, sprite):
+        # kommt am anschluss von dieser maschine strom an?
+        # entweder von einem stromfuehrenden wire, oder von einem
+        # brennenden generator dessen anschluss zurueckzeigt
+        px, py = self.port_tile(sprite)
+        wire = self.wire_at(px, py)
+        if wire is not None and wire in self.powered_wires:
+            return True
+        for gen in self.generator_list:
+            if gen.burn_timer > 0 and gen.center_x == px and gen.center_y == py:
+                if self.port_tile(gen) == (sprite.center_x, sprite.center_y):
+                    return True
+        return False
+
+    def connects_at(self, x, y, wire_x, wire_y):
+        # zaehlt diese kachel als anschluss fuer das wire bei (wire_x, wire_y)?
         if self.wire_at(x, y):
             return True
         for sprite in arcade.get_sprites_at_point((x, y), self.stone_list):
-            if sprite.ore_type == "generator" or sprite.ore_type in NEEDS_POWER:
+            if sprite.ore_type in NEEDS_POWER:
                 return True
-            # das charging doc hat seinen anschluss nur unten
-            if sprite.ore_type in ("charging_doc", "drill") and von_unten:
-                return True
+            # maschinen haben genau einen anschluss, der sich mitdreht:
+            # das wire muss auf seiner port-kachel liegen
+            if sprite.ore_type in ("generator", "charging_doc", "drill"):
+                if self.port_tile(sprite) == (wire_x, wire_y):
+                    return True
         return False
 
     def update_wire_look(self, wire):
         # das wire schaut sich seine 4 nachbarn an und waehlt selber
         # bild und drehung, wie redstone in minecraft
-        oben   = self.connects_at(wire.center_x, wire.center_y + TILE_SIZE, von_unten=True)
-        unten  = self.connects_at(wire.center_x, wire.center_y - TILE_SIZE)
-        links  = self.connects_at(wire.center_x - TILE_SIZE, wire.center_y)
-        rechts = self.connects_at(wire.center_x + TILE_SIZE, wire.center_y)
+        wx, wy = wire.center_x, wire.center_y
+        oben   = self.connects_at(wx, wy + TILE_SIZE, wx, wy)
+        unten  = self.connects_at(wx, wy - TILE_SIZE, wx, wy)
+        links  = self.connects_at(wx - TILE_SIZE, wy, wx, wy)
+        rechts = self.connects_at(wx + TILE_SIZE, wy, wx, wy)
 
         # genau 2 anschluesse ueber-eck -> kurve.
         # wire_curve.png verbindet unten+links, angle dreht im uhrzeigersinn
@@ -1159,18 +1193,10 @@ class Game(arcade.Window):
         self.update_wires_around(tile_x, tile_y)
 
     def update_drill_machines(self, delta_time):
-        # ein drill mit strom (anschluss unten, wie beim charging doc)
-        # sammelt von alleine erze in seine faecher
+        # ein drill mit strom am anschluss sammelt von alleine
+        # erze in seine faecher
         for drill in self.drill_list:
-            unten_x = drill.center_x
-            unten_y = drill.center_y - TILE_SIZE
-            an = False
-            wire = self.wire_at(unten_x, unten_y)
-            if wire is not None and wire in self.powered_wires:
-                an = True
-            for gen in self.generator_list:
-                if gen.burn_timer > 0 and gen.center_x == unten_x and gen.center_y == unten_y:
-                    an = True
+            an = self.power_at_port(drill)
             drill.powered = an
             if not an:
                 continue
@@ -1181,7 +1207,12 @@ class Game(arcade.Window):
                 # gleicher lostopf wie die diamant-spitzhacke
                 erz = random.choice(ORE_POOLS["pickaxe_diamond"])
                 if erz is not None:
-                    self.put_in_storage(drill.items, erz)
+                    # ist der speicher gerade offen, kommen die erze in
+                    # die menue-slots - so sieht man sie live ankommen
+                    if self.inventory.chest is drill:
+                        self.put_in_storage(self.inventory.chest_slots, erz)
+                    else:
+                        self.put_in_storage(drill.items, erz)
 
     def put_in_storage(self, items, item_type):
         # erst auf einen gleichen stapel legen, sonst leeres fach nehmen
@@ -1223,19 +1254,9 @@ class Game(arcade.Window):
         self.update_wires_around(tile_x, tile_y)
 
     def update_charging_docs(self):
-        # ein charging doc leuchtet wenn strom in seinen anschluss
-        # unten reinfliesst (stromfuehrendes wire oder brennender
-        # generator direkt drunter)
+        # ein charging doc leuchtet wenn strom an seinem anschluss ankommt
         for doc in self.charging_doc_list:
-            unten_x = doc.center_x
-            unten_y = doc.center_y - TILE_SIZE
-            an = False
-            wire = self.wire_at(unten_x, unten_y)
-            if wire is not None and wire in self.powered_wires:
-                an = True
-            for gen in self.generator_list:
-                if gen.burn_timer > 0 and gen.center_x == unten_x and gen.center_y == unten_y:
-                    an = True
+            an = self.power_at_port(doc)
             doc.powered = an
             self.set_light(doc, an, CHARGING_DOC_LIGHT_SIZE, CHARGING_DOC_LIGHT_COLOR)
 
