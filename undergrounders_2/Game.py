@@ -3,13 +3,6 @@ from arcade.future.light import Light, LightLayer
 import random
 
 
-# undergrounders 2
-# steuerung:
-#   W A S D        = laufen, shift = sprinten
-#   E / C gehalten = die kachel vor dem spieler abbauen (c baut immer)
-#   E kurz         = crafting menue / kiste / generator / drill aus dem dock
-#   Q              = 1 item vor den spieler werfen (drill -> ins dock)
-#   1-9 / mausrad  = hotbar slot waehlen
 
 SCREEN_WIDTH  = 800
 SCREEN_HEIGHT = 600
@@ -20,41 +13,36 @@ WORLD_HEIGHT  = 4000
 WALK_SPEED   = 2
 SPRINT_SPEED = 3
 
-MINE_RANGE = 48    # wie nah man am stein sein muss
+MINE_RANGE = 48
 
-PLAYER_FRAME_TIME = 0.18   # so viele sekunden wird jeder lauf-frame gezeigt
-PLAYER_SCALE      = 1      # wie gross der spieler gezeichnet wird
+PLAYER_FRAME_TIME = 0.18
+PLAYER_SCALE      = 1
 
-# licht: ohne lampe sieht man nur so viel (schwarz = stockdunkel)
 AMBIENT_COLOR      = (10, 10, 60)
-PLAYER_LIGHT_SIZE  = 100   # radius vom licht das dem spieler folgt
-TORCH_LIGHT_SIZE   = 280   # radius vom licht einer fackel
-TORCH_LIGHT_COLOR  = (235, 245, 255)   # kuehles blau-weiss, fast volle helligkeit
+PLAYER_LIGHT_SIZE  = 100
+TORCH_LIGHT_SIZE   = 280
+TORCH_LIGHT_COLOR  = (235, 245, 255)
 
-# strom: 1 kohle brennt so lange, solange leuchten generator und wires
-GENERATOR_BURN_TIME   = 30    # sekunden strom pro kohle
+GENERATOR_BURN_TIME   = 30
 GENERATOR_LIGHT_SIZE  = 200
-GENERATOR_LIGHT_COLOR = (255, 220, 140)   # warmes maschinen-gelb
-WIRE_LIGHT_SIZE       = 40    # sehr klein, nur ein schimmer
+GENERATOR_LIGHT_COLOR = (255, 220, 140)
+WIRE_LIGHT_SIZE       = 40
 WIRE_LIGHT_COLOR      = (255, 220, 140)
 
-CHARGING_DOC_LIGHT_SIZE  = 180   # licht vom charging doc wenn strom reinfliesst
-CHARGING_DOC_LIGHT_COLOR = (140, 255, 170)   # gruenes lade-licht
+CHARGING_DOC_LIGHT_SIZE  = 180
+CHARGING_DOC_LIGHT_COLOR = (140, 255, 170)
 
-# der iron drill: am charging doc aufladen, dann bohrt er superschnell
-DRILL_CHARGE_TIME = 30    # sekunden am dock bis der drill voll ist
-DRILL_POWER_TIME  = 120   # so lange haelt eine volle ladung (2 minuten)
+DRILL_CHARGE_TIME = 30
+DRILL_POWER_TIME  = 120
 
-# der drill-block: sammelt von alleine erze solange er strom hat (anschluss unten)
-DRILL_FARM_TIME = 5   # alle so viele sekunden kommt 1 erz in seinen speicher
+DRILL_FARM_TIME = 5
 
-# wie viele sekunden das abbauen dauert, pro werkzeug
 MINE_TIME = {
     "hand":            1.0,
     "pickaxe":         0.6,
     "pickaxe_iron":    0.4,
     "pickaxe_diamond": 0.15,
-    "iron_drill":      0.05,   # sehr schnell! (nur mit ladung)
+    "iron_drill":      0.05,
 }
 
 HOTBAR_SLOTS = 9
@@ -63,19 +51,15 @@ SLOT_GAP     = 4
 
 TILE_SIZE       = 32
 DROP_JITTER     = 6
-STONES_TO_BLOCK = 4    # 4 steine auf einer kachel = 1 crafting block
+STONES_TO_BLOCK = 4
 
 GRID_ROWS  = 5
 GRID_COLS  = 5
 DRAG_SCALE = 1.5
 
-CHEST_ROWS = 3    # so viele faecher hat eine kiste
+CHEST_ROWS = 3
 CHEST_COLS = 5
 
-# (erz, prozent) - so viele von 100 steinen geben dieses erz.
-# fuer jedes werkzeug gibt es eine eigene tabelle:
-# je besser die spitzhacke, desto besser die chancen!
-# (mit blossen haenden findet man keine diamanten)
 ORE_TABLE_HAND = [
     ("iron",     8),
     ("copper",  10),
@@ -106,8 +90,6 @@ ORE_TABLE_DIAMOND_PICKAXE = [
 
 
 def make_pool(table):
-    # baut einen lostopf mit 100 losen: jedes erz liegt so oft drin
-    # wie sein prozent-wert, die restlichen lose sind nieten (None)
     pool = []
     for name, percent in table:
         for i in range(percent):
@@ -117,25 +99,22 @@ def make_pool(table):
     return pool
 
 
-# fuer jedes werkzeug ein eigener lostopf
 ORE_POOLS = {
     "hand":            make_pool(ORE_TABLE_HAND),
     "pickaxe":         make_pool(ORE_TABLE_PICKAXE),
     "pickaxe_iron":    make_pool(ORE_TABLE_IRON_PICKAXE),
     "pickaxe_diamond": make_pool(ORE_TABLE_DIAMOND_PICKAXE),
-    "iron_drill":      make_pool(ORE_TABLE_DIAMOND_PICKAXE),   # bohrt so gut wie diamant
+    "iron_drill":      make_pool(ORE_TABLE_DIAMOND_PICKAXE),
 }
 
-# welcher buchstabe fuer welches item in den rezepten steht.
-# kleiner buchstabe = material, grosser buchstabe = fertiger kopf daraus
 LETTERS = {
     
     "stone":                "s",
     "iron_drill_base":      "b",
-    "iron_drill_drill":     "R",   # "D" war schon vom diamant-kopf besetzt!
+    "iron_drill_drill":     "R",
     "generator":            "g",
     "wire":                 "w",
-    "copper_stick":         "k",   # muss genau 1 zeichen sein!
+    "copper_stick":         "k",
     "coal":                 "o",
     "copper":               "c",
     "iron":                 "i",
@@ -147,8 +126,6 @@ LETTERS = {
     "battery":              "B",
 }
 
-# rezepte: einfach neue dazuschreiben! "." heisst leeres feld.
-# es zaehlt nur die form, egal wo im gitter sie liegt
 RECIPES = [
     ("pickaxe_handle",       ["sss"]),
     ("battery",              ["ioi",]),
@@ -157,9 +134,9 @@ RECIPES = [
                               "iii",
                               ".w."]),
     ("copper_stick",         ["c",
-                              "c"]),                # 4 kupfer nebeneinander
+                              "c"]),
     ("torch",                ["o",
-                              "k"]),                # kohle auf kupferstab
+                              "k"]),
     ("wire",                 ["c",
                               "c",
                               "c"]),
@@ -170,7 +147,7 @@ RECIPES = [
                               "idddi",
                               "idkdi",
                               "idddi",
-                              "iiiii"]),          # eisen aussenrum, diamanten innen, kupferstab im zentrum
+                              "iiiii"]),
     ("iron_drill_base",      ["iii",
                               "iBi",
                               "iii",
@@ -178,36 +155,35 @@ RECIPES = [
     ("iron_drill_drill",     [".c.",
                               "cic"]),
     ("iron_drill",           ["R",
-                              "b"]),              # eisen-gehaeuse, diamant-bohrkopf, kupferstab-griff
+                              "b"]),
     ("pickaxe_handle",       ["s..",
                               ".s.",
-                              "..s"]),              # 3 steine diagonal
+                              "..s"]),
     ("pickaxe_handle",       ["..s",
                               ".s.",
-                              "s.."]),              # andere diagonale
+                              "s.."]),
     ("hammer",               ["iii",
                               "sss",
-                              ".h."]),              # eisen, steine, stiel drunter
+                              ".h."]),
     ("crafting_block",       ["ss",
-                              "ss"]),               # 2x2 steine
+                              "ss"]),
     ("chest",                ["sss",
                               "s.s",
-                              "sss"]),              # ring aus 8 steinen
+                              "sss"]),
     ("pickaxe_head",         ["sss",
-                              "s.s"]),              # 5 steine
+                              "s.s"]),
     ("pickaxe_iron_head",    ["iii",
-                              "i.i"]),              # 5 eisen
+                              "i.i"]),
     ("pickaxe_diamond_head", ["ddd",
-                              "d.d"]),              # 5 diamanten
+                              "d.d"]),
     ("pickaxe",              ["S",
-                              "h"]),                # stein-kopf auf stiel
+                              "h"]),
     ("pickaxe_iron",         ["I",
-                              "h"]),                # eisen-kopf auf stiel
+                              "h"]),
     ("pickaxe_diamond",      ["D",
-                              "h"]),                # diamant-kopf auf stiel
+                              "h"]),
 ]
 
-# wie viel kohle jedes rezept aus dem kohle-slot verbraucht
 COAL_COST = {
     "copper_stick":         1,
     "charging_doc":         10,
@@ -231,27 +207,24 @@ COAL_COST = {
     "battery":              2,
 }
 
-# diese rezepte gehen nur wenn ein hammer in der hotbar liegt
 NEEDS_HAMMER = ["pickaxe_iron", "pickaxe_diamond", "charging_doc", "iron_drill"]
 
-# diese bloecke brauchen strom: wires verbinden sich automatisch mit ihnen.
-# trag hier einfach den ore_type von deinen maschinen ein!
 NEEDS_POWER = ["energy_station"]
 
-CRAFT_TABLE_RANGE = 64   # wie nah man am crafting table stehen muss
+CRAFT_TABLE_RANGE = 64
 
 
 class Inventory:
     def __init__(self):
         self.selected_slot = 0
         self.crafting_open = False
-        self.in_hand       = None     # item das gerade an der maus haengt
+        self.in_hand       = None
         self.mouse_pos     = (0, 0)
-        self.craft_hint    = ""       # hinweis-text, z.b. "Braucht 3 Kohle!"
-        self.chest         = None     # die kiste die gerade offen ist
-        self.generator     = None     # der generator der gerade offen ist
-        self.drag_slots    = []       # slots die beim verteilen schon 1 bekommen haben
-        self.drag_source   = None     # quell-slot beim verteilen (rechtsklick gehalten)
+        self.craft_hint    = ""
+        self.chest         = None
+        self.generator     = None
+        self.drag_slots    = []
+        self.drag_source   = None
 
         self.images = {
             "charging_doc":    arcade.load_texture("charging_doc.png"),
@@ -288,16 +261,13 @@ class Inventory:
         self.build_slots()
 
     def new_slot(self, kind, x, y):
-        # ein slot weiss selber wo er auf dem bildschirm liegt
         slot = {"kind": kind, "x": x, "y": y, "type": None, "count": 0}
         self.slots.append(slot)
         return slot
 
     def build_slots(self):
-        # alle slots einmal anlegen, jeder bekommt seine position
         self.slots = []
 
-        # die hotbar, unten in der mitte
         total = HOTBAR_SLOTS * SLOT_SIZE + (HOTBAR_SLOTS - 1) * SLOT_GAP
         left = (SCREEN_WIDTH - total) / 2
         self.hotbar = []
@@ -306,7 +276,6 @@ class Inventory:
             y = SLOT_GAP + SLOT_SIZE / 2
             self.hotbar.append(self.new_slot("hotbar", x, y))
 
-        # das crafting gitter, als tabelle mit zeilen und spalten
         grid_width = GRID_COLS * SLOT_SIZE + (GRID_COLS - 1) * SLOT_GAP
         left = (SCREEN_WIDTH - grid_width) / 2
         top = SCREEN_HEIGHT / 2 + 100
@@ -319,21 +288,16 @@ class Inventory:
                 line.append(self.new_slot("grid", x, y))
             self.grid.append(line)
 
-        # der output-slot rechts neben dem gitter
         x = left + grid_width + 40 + SLOT_SIZE / 2
         y = top - 2 * (SLOT_SIZE + SLOT_GAP)
         self.output = self.new_slot("output", x, y)
 
-        # der kohle-slot unter dem gitter
         x = SCREEN_WIDTH / 2
         y = top - GRID_ROWS * (SLOT_SIZE + SLOT_GAP) - 10
         self.fuel = self.new_slot("fuel", x, y)
 
-        # der kohle-slot vom generator (nur sichtbar wenn einer offen ist),
-        # links daneben wird das energy-symbol gezeichnet
         self.energy = self.new_slot("energy", SCREEN_WIDTH / 2 + 30, SCREEN_HEIGHT / 2 + 60)
 
-        # die faecher einer kiste (sieht man nur wenn eine kiste offen ist)
         self.chest_slots = []
         for row in range(CHEST_ROWS):
             for col in range(CHEST_COLS):
@@ -346,7 +310,6 @@ class Inventory:
         slot["count"] = 0
 
     def current_tool(self):
-        # welches werkzeug haelt der spieler gerade? sonst "hand"
         item = self.hotbar[self.selected_slot]["type"]
         if item in MINE_TIME:
             return item
@@ -359,7 +322,6 @@ class Inventory:
         return False
 
     def drop_one(self):
-        # nimmt 1 item aus dem gewaehlten slot und gibt den typ zurueck
         slot = self.hotbar[self.selected_slot]
         if slot["type"] is None:
             return None
@@ -370,7 +332,6 @@ class Inventory:
         return item_type
 
     def add_to_hotbar(self, item_type, count):
-        # erst auf einen gleichen stapel legen, sonst leeren slot nehmen
         for slot in self.hotbar:
             if slot["type"] == item_type:
                 slot["count"] = slot["count"] + count
@@ -382,12 +343,8 @@ class Inventory:
                 return True
         return False
 
-    # ------------------------------------------------------------------
-    # items mit der maus hin und her ziehen
-    # ------------------------------------------------------------------
 
     def mouse_in_slot(self, x, y, slot):
-        # die 4 kanten vom slot ausrechnen und schauen ob die maus drin ist
         links  = slot["x"] - SLOT_SIZE / 2
         rechts = slot["x"] + SLOT_SIZE / 2
         unten  = slot["y"] - SLOT_SIZE / 2
@@ -395,7 +352,6 @@ class Inventory:
         return links <= x <= rechts and unten <= y <= oben
 
     def slot_visible(self, slot):
-        # die hotbar sieht man immer, den rest nur wenn das menue offen ist
         if slot["kind"] == "hotbar":
             return True
         if slot["kind"] == "chest":
@@ -405,7 +361,6 @@ class Inventory:
         return self.crafting_open
 
     def slot_at(self, x, y):
-        # welcher slot liegt unter der maus?
         for slot in self.slots:
             if not self.slot_visible(slot):
                 continue
@@ -414,16 +369,12 @@ class Inventory:
         return None
 
     def start_drag(self, x, y, only_one=False):
-        # item unter der maus in die hand nehmen.
-        # linksklick bewegt den ganzen stapel, rechtsklick startet den verteil-modus
         slot = self.slot_at(x, y)
         if slot is None or slot["type"] is None:
             return
         self.drag_slots  = []
         self.drag_source = None
 
-        # aus dem output genommen = gebaut -> kohle und zutaten verbrauchen.
-        # linksklick baut gleich so viele wie die zutaten hergeben, rechtsklick nur 1
         if slot["kind"] == "output":
             n = 1 if only_one else self.max_crafts(slot["type"])
             self.in_hand = {"type": slot["type"], "count": n}
@@ -435,16 +386,12 @@ class Inventory:
         self.in_hand = {"type": slot["type"], "count": slot["count"]}
         self.clear_slot(slot)
         if only_one:
-            # verteil-modus: quell-slot merken, da geht der rest spaeter zurueck.
-            # er steht auch in drag_slots, damit nicht in ihn selbst verteilt wird
             self.drag_source = slot
             self.drag_slots  = [slot]
 
         self.check_recipe()
 
     def track_drag(self, x, y):
-        # nur im verteil-modus (rechtsklick gehalten): jeder neue slot
-        # unter der maus bekommt sofort 1 item aus der hand
         if self.in_hand is None or self.drag_source is None:
             return
         if self.in_hand["count"] <= 0:
@@ -454,7 +401,7 @@ class Inventory:
             return
         for done in self.drag_slots:
             if done is slot:
-                return   # der hat schon eins bekommen
+                return
         if slot["kind"] == "output":
             return
         if slot["kind"] in ("fuel", "energy") and self.in_hand["type"] != "coal":
@@ -469,12 +416,9 @@ class Inventory:
         self.check_recipe()
 
     def end_drag(self, x, y):
-        # item aus der hand in den slot unter der maus legen
         if self.in_hand is None:
             return
 
-        # verteil-modus: der slot unterm loslassen bekommt auch noch 1,
-        # der rest wandert zurueck in den quell-slot
         if self.drag_source is not None:
             self.track_drag(x, y)
             if self.in_hand["count"] > 0:
@@ -494,29 +438,23 @@ class Inventory:
 
         ok = slot is not None
         if ok and slot["kind"] == "output":
-            ok = False        # in den output kann man nichts reinlegen
+            ok = False
         if ok and slot["kind"] in ("fuel", "energy") and self.in_hand["type"] != "coal":
-            ok = False        # in den kohle-slot darf nur kohle
+            ok = False
         if ok and slot["type"] is not None and slot["type"] != self.in_hand["type"]:
-            ok = False        # da liegt schon ein anderes item drin
+            ok = False
 
         if ok:
             slot["type"] = self.in_hand["type"]
             slot["count"] = slot["count"] + self.in_hand["count"]
         else:
-            # daneben losgelassen -> zurueck in die hotbar
             self.add_to_hotbar(self.in_hand["type"], self.in_hand["count"])
 
         self.in_hand = None
         self.check_recipe()
 
-    # ------------------------------------------------------------------
-    # rezepte
-    # ------------------------------------------------------------------
 
     def grid_as_text(self):
-        # schreibt das gitter als text auf, ein string pro zeile.
-        # 3 steine nebeneinander sehen dann z.b. so aus: ["sss"]
         lines = []
         for row in self.grid:
             line = ""
@@ -526,18 +464,15 @@ class Inventory:
                 elif slot["type"] in LETTERS:
                     line = line + LETTERS[slot["type"]]
                 else:
-                    line = line + "?"   # item das in keinem rezept vorkommt
+                    line = line + "?"
             lines.append(line)
 
-        # leere zeilen oben und unten wegschneiden
         empty_row = "." * GRID_COLS
         while len(lines) > 0 and lines[0] == empty_row:
             lines.pop(0)
         while len(lines) > 0 and lines[-1] == empty_row:
             lines.pop()
 
-        # leere spalten links und rechts wegschneiden,
-        # lines[i][1:] heisst: das erste zeichen abschneiden
         while len(lines) > 0 and self.column_empty(lines, 0):
             for i in range(len(lines)):
                 lines[i] = lines[i][1:]
@@ -548,15 +483,12 @@ class Inventory:
         return lines
 
     def column_empty(self, lines, col):
-        # ist in dieser spalte ueberall nur ein punkt? (-1 = letzte spalte)
         for line in lines:
             if line[col] != ".":
                 return False
         return True
 
     def check_recipe(self):
-        # das gitter als text mit jedem rezept vergleichen.
-        # passt eins, landet das ergebnis im output-slot
         self.clear_slot(self.output)
         self.craft_hint = ""
         in_grid = self.grid_as_text()
@@ -577,8 +509,6 @@ class Inventory:
             return
 
     def max_crafts(self, item):
-        # wie oft geht das rezept mit dem was gerade da liegt?
-        # das kleinste feld im gitter und die kohle begrenzen es
         n = None
         for row in self.grid:
             for slot in row:
@@ -590,8 +520,6 @@ class Inventory:
         return min(n, self.fuel["count"] // COAL_COST[item])
 
     def pay_recipe(self, item, n=1):
-        # kohle abziehen und aus jedem benutzten feld n zutaten nehmen,
-        # der rest bleibt liegen
         self.fuel["count"] = self.fuel["count"] - COAL_COST[item] * n
         if self.fuel["count"] <= 0:
             self.clear_slot(self.fuel)
@@ -603,44 +531,31 @@ class Inventory:
                 if slot["count"] <= 0:
                     self.clear_slot(slot)
 
-    # ------------------------------------------------------------------
-    # kisten
-    # ------------------------------------------------------------------
 
     def open_chest(self, chest):
-        # die sachen aus der kiste in die kisten-slots legen
         self.chest = chest
         for i in range(len(self.chest_slots)):
             self.chest_slots[i]["type"] = chest.items[i]["type"]
             self.chest_slots[i]["count"] = chest.items[i]["count"]
 
     def close_chest(self):
-        # die slots zurueck in die kiste schreiben
         for i in range(len(self.chest_slots)):
             self.chest.items[i]["type"] = self.chest_slots[i]["type"]
             self.chest.items[i]["count"] = self.chest_slots[i]["count"]
         self.chest = None
 
-    # ------------------------------------------------------------------
-    # generator
-    # ------------------------------------------------------------------
 
     def open_generator(self, gen):
-        # die kohle aus dem generator in den energie-slot legen
         self.generator = gen
         self.energy["type"]  = gen.fuel["type"]
         self.energy["count"] = gen.fuel["count"]
 
     def close_generator(self):
-        # den slot zurueck in den generator schreiben
         self.generator.fuel["type"]  = self.energy["type"]
         self.generator.fuel["count"] = self.energy["count"]
         self.generator = None
         self.clear_slot(self.energy)
 
-    # ------------------------------------------------------------------
-    # zeichnen
-    # ------------------------------------------------------------------
 
     def draw_slot(self, slot):
         x = slot["x"]
@@ -678,7 +593,6 @@ class Inventory:
                 self.fuel["x"] - SLOT_SIZE / 2 - 8, self.fuel["y"] - 6,
                 arcade.color.WHITE, font_size=12, anchor_x="right",
             )
-            # hinweis wenn ein rezept passt aber noch was fehlt
             if self.craft_hint != "":
                 arcade.draw_text(
                     self.craft_hint,
@@ -686,7 +600,6 @@ class Inventory:
                     arcade.color.ORANGE, font_size=12, anchor_x="center",
                 )
 
-        # kisten-menue: dunkler kasten mit titel hinter den faechern
         if self.chest is not None:
             first = self.chest_slots[0]
             last = self.chest_slots[-1]
@@ -695,7 +608,6 @@ class Inventory:
                 last["y"] - SLOT_SIZE, first["y"] + SLOT_SIZE,
                 (40, 40, 40, 230),
             )
-            # drills benutzen das gleiche menue, kriegen aber ihren eigenen titel
             titel = "Drill" if self.chest.ore_type == "drill" else "Kiste"
             arcade.draw_text(
                 titel,
@@ -703,7 +615,6 @@ class Inventory:
                 arcade.color.WHITE, font_size=14, anchor_x="center",
             )
 
-        # generator-menue: energy-symbol links, kohle-slot rechts daneben
         if self.generator is not None:
             x = self.energy["x"]
             y = self.energy["y"]
@@ -721,7 +632,6 @@ class Inventory:
                 self.images["energy"],
                 arcade.XYWH(x - SLOT_SIZE - 10, y, SLOT_SIZE - 8, SLOT_SIZE - 8),
             )
-            # wie lange die aktuelle kohle noch brennt
             if self.generator.burn_timer > 0:
                 arcade.draw_text(
                     "brennt noch " + str(int(self.generator.burn_timer) + 1) + "s",
@@ -729,12 +639,10 @@ class Inventory:
                     arcade.color.YELLOW, font_size=12, anchor_x="center",
                 )
 
-        # alle slots zeichnen die man gerade sehen kann
         for slot in self.slots:
             if self.slot_visible(slot):
                 self.draw_slot(slot)
 
-        # gelber rahmen um den gewaehlten hotbar-slot
         chosen = self.hotbar[self.selected_slot]
         arcade.draw_lrbt_rectangle_outline(
             chosen["x"] - SLOT_SIZE / 2, chosen["x"] + SLOT_SIZE / 2,
@@ -742,7 +650,6 @@ class Inventory:
             arcade.color.YELLOW, 3,
         )
 
-        # das item das gerade an der maus haengt
         if self.in_hand:
             size = (SLOT_SIZE - 8) * DRAG_SCALE
             mx, my = self.mouse_pos
@@ -754,7 +661,6 @@ class Game(arcade.Window):
         super().__init__(SCREEN_WIDTH, SCREEN_HEIGHT, "Game")
         arcade.set_background_color(arcade.color.DARK_SLATE_GRAY)
 
-        # merkt sich welche tasten gerade gedrueckt sind
         self.keys = {
             arcade.key.W: False,
             arcade.key.A: False,
@@ -765,11 +671,11 @@ class Game(arcade.Window):
             arcade.key.E: False,
             arcade.key.C: False,
         }
-        self.e_mining = False   # baut der spieler gerade mit e oder c ab?
+        self.e_mining = False
 
-        self.mine_target   = None      # stein der gerade abgebaut wird
+        self.mine_target   = None
         self.mine_progress = 0.0
-        self.facing        = (0, -1)   # letzte laufrichtung
+        self.facing        = (0, -1)
         self.inventory     = Inventory()
         self.mouse_pos     = (0, 0)
 
@@ -779,33 +685,28 @@ class Game(arcade.Window):
     def build_world(self):
         self.stone_list  = arcade.SpriteList(use_spatial_hash=True)
         self.drop_list   = arcade.SpriteList(use_spatial_hash=True)
-        self.walk_through_list   = arcade.SpriteList(use_spatial_hash=True)   # wires: nicht in der physik, man laeuft durch
+        self.walk_through_list   = arcade.SpriteList(use_spatial_hash=True)
 
-        # die gesichter eines wires: gerade (oben+unten), kurve (unten+links),
-        # t-stueck (oben frei) und kreuz. welches dran ist entscheiden die nachbarn
         self.wire_textures = {
             "gerade": arcade.load_texture("wire.png"),
             "kurve":  arcade.load_texture("wire_curve.png"),
             "t":      arcade.load_texture("3_way wire.png"),
             "kreuz":  arcade.load_texture("4_way wire.png"),
         }
-        self.table_list  = arcade.SpriteList()   # alle crafting tables in der welt
-        self.chest_list  = arcade.SpriteList()   # alle kisten in der welt
-        self.generator_list = arcade.SpriteList()   # alle generatoren in der welt
-        self.charging_doc_list = arcade.SpriteList()   # alle charging docs in der welt
-        self.drill_list = arcade.SpriteList()   # alle drill-bloecke in der welt
+        self.table_list  = arcade.SpriteList()
+        self.chest_list  = arcade.SpriteList()
+        self.generator_list = arcade.SpriteList()
+        self.charging_doc_list = arcade.SpriteList()
+        self.drill_list = arcade.SpriteList()
 
-        # der drill gehoert dem spieler: so viele sekunden power sind noch drin
         self.drill_charge = 0.0
-        # das dock hat 2 gesichter: leer und mit eingelegtem drill
         self.charging_doc_textures = {
             "leer":  arcade.load_texture("charging_doc.png"),
             "laedt": arcade.load_texture("charging_doc_id.png"),
         }
-        self.powered_wires  = []   # welche wires gerade strom haben (macht update_power)
+        self.powered_wires  = []
         self.player_list = arcade.SpriteList()
 
-        # je 2 lauf-frames pro blickrichtung; nach links wird einfach gespiegelt
         vorne  = [arcade.load_texture("player1.png"), arcade.load_texture("player2.png")]
         seite  = [arcade.load_texture("player3.png"), arcade.load_texture("player4.png")]
         hinten = [arcade.load_texture("player5.png"), arcade.load_texture("player6.png")]
@@ -815,22 +716,18 @@ class Game(arcade.Window):
             (1, 0):  seite,
             (-1, 0): [seite[0].flip_left_right(), seite[1].flip_left_right()],
         }
-        self.walk_frame = 0     # welcher der 2 lauf-frames gerade dran ist
-        self.walk_timer = 0.0   # zaehlt die zeit bis zum naechsten frame-wechsel
+        self.walk_frame = 0
+        self.walk_timer = 0.0
 
         self.player = arcade.Sprite(vorne[0], PLAYER_SCALE)
         self.player.center_x = WORLD_WIDTH / 2
         self.player.center_y = WORLD_HEIGHT / 2
         self.player_list.append(self.player)
 
-        # unsichtbare hitbox: nur sie steckt in der physik.
-        # sie ist in keiner draw-liste, darum sieht man sie nie.
-        # das sichtbare bild folgt ihr einfach jeden frame
         self.player_hitbox = arcade.Sprite("player_hitbox.png", 1)
         self.player_hitbox.center_x = self.player.center_x
         self.player_hitbox.center_y = self.player.center_y
 
-        # ganze welt mit steinen fuellen, nur die mitte bleibt frei (spawn)
         for x in range(0, WORLD_WIDTH, TILE_SIZE):
             for y in range(0, WORLD_HEIGHT, TILE_SIZE):
                 in_spawn = (
@@ -842,37 +739,30 @@ class Game(arcade.Window):
                 stone = arcade.Sprite(random.choice(["stone_1.png", "stone_2.png"]), 1)
                 stone.center_x = x
                 stone.center_y = y
-                # None heisst: das erz wird erst beim abbauen ausgelost
                 stone.ore_type = None
                 self.stone_list.append(stone)
 
-        self.camera     = arcade.Camera2D()   # folgt dem spieler
-        self.gui_camera = arcade.Camera2D()   # bleibt fest, fuer die hotbar
+        self.camera     = arcade.Camera2D()
+        self.gui_camera = arcade.Camera2D()
 
-        # licht-schicht: alles was von licht getroffen werden soll wird
-        # da reingezeichnet, danach macht sie den rest dunkel
         self.light_layer = LightLayer(SCREEN_WIDTH, SCREEN_HEIGHT)
         self.light_layer.set_background_color(arcade.color.DARK_SLATE_GRAY)
 
-        # das licht das dem spieler folgt
         self.player_light = Light(
             self.player.center_x, self.player.center_y,
             PLAYER_LIGHT_SIZE, arcade.csscolor.WHITE, "soft")
         self.light_layer.add(self.player_light)
 
     def current_tool(self):
-        # wie inventory.current_tool, aber ein leerer drill bohrt wie die hand
         tool = self.inventory.current_tool()
         if tool == "iron_drill" and self.drill_charge <= 0:
             return "hand"
         return tool
 
     def mine_time(self):
-        # bessere werkzeuge bauen schneller ab
         return MINE_TIME[self.current_tool()]
 
     def tile_in_front(self):
-        # die kachel direkt vor dem spieler, auf das raster gerundet
         fx, fy = self.facing
         tile_x = round((self.player_hitbox.center_x + fx * TILE_SIZE) / TILE_SIZE) * TILE_SIZE
         tile_y = round((self.player_hitbox.center_y + fy * TILE_SIZE) / TILE_SIZE) * TILE_SIZE
@@ -882,12 +772,11 @@ class Game(arcade.Window):
         block = arcade.Sprite("crafting_block.png", 0.5)
         block.center_x = tile_x
         block.center_y = tile_y
-        block.ore_type = "crafting_block"   # gibt sich beim abbauen selber zurueck
+        block.ore_type = "crafting_block"
         self.stone_list.append(block)
-        self.table_list.append(block)   # extra liste, damit wir schnell checken koennen ob einer in der naehe ist
+        self.table_list.append(block)
 
     def near_crafting_table(self):
-        # steht irgendein crafting table nah genug am spieler?
         for table in self.table_list:
             if arcade.get_distance_between_sprites(self.player_hitbox, table) <= CRAFT_TABLE_RANGE:
                 return True
@@ -897,8 +786,7 @@ class Game(arcade.Window):
         chest = arcade.Sprite("chest.png", 1)
         chest.center_x = tile_x
         chest.center_y = tile_y
-        chest.ore_type = "chest"   # gibt sich beim abbauen selber zurueck
-        # jede kiste hat ihre eigenen faecher
+        chest.ore_type = "chest"
         chest.items = []
         for i in range(CHEST_ROWS * CHEST_COLS):
             chest.items.append({"type": None, "count": 0})
@@ -909,7 +797,7 @@ class Game(arcade.Window):
         doc = arcade.Sprite("charging_doc.png", 1)
         doc.center_x = tile_x
         doc.center_y = tile_y
-        doc.ore_type = "charging_doc"   # gibt sich beim abbauen selber zurueck
+        doc.ore_type = "charging_doc"
         self.stone_list.append(doc)
         
              
@@ -917,22 +805,17 @@ class Game(arcade.Window):
     
 
     def generator_nearby(self):
-        # gibt einen generator zurueck der nah genug am spieler ist, sonst None
         for gen in self.generator_list:
             if arcade.get_distance_between_sprites(self.player_hitbox, gen) <= CRAFT_TABLE_RANGE:
                 return gen
         return None
 
     def generator_fuel_slot(self, gen):
-        # wo liegt die kohle von diesem generator gerade? wenn sein menue
-        # offen ist, zaehlt der energie-slot, sonst sein eigenes fach
         if self.inventory.generator is gen:
             return self.inventory.energy
         return gen.fuel
 
     def update_generators(self, delta_time):
-        # jeder brennende generator zaehlt runter. ist die kohle
-        # abgebrannt, wird die naechste aus dem slot genommen
         for gen in self.generator_list:
             if gen.burn_timer > 0:
                 gen.burn_timer -= delta_time
@@ -947,7 +830,6 @@ class Game(arcade.Window):
                     gen.burn_timer = GENERATOR_BURN_TIME
 
     def set_light(self, sprite, an, size, color):
-        # macht das licht von einem sprite an oder aus
         if an and sprite.light is None:
             sprite.light = Light(sprite.center_x, sprite.center_y, size, color, "soft")
             self.light_layer.add(sprite.light)
@@ -956,15 +838,12 @@ class Game(arcade.Window):
             sprite.light = None
 
     def update_power(self):
-        # strom fliesst vom brennenden generator durch alle wires
-        # die (ueber die kette) mit ihm verbunden sind
         versorgt   = []
         zu_pruefen = []
         for gen in self.generator_list:
             an = gen.burn_timer > 0
             self.set_light(gen, an, GENERATOR_LIGHT_SIZE, GENERATOR_LIGHT_COLOR)
             if an:
-                # strom kommt nur am anschluss raus (dreht sich mit!)
                 wire = self.wire_at(*self.port_tile(gen))
                 if wire is not None and wire not in versorgt:
                     versorgt.append(wire)
@@ -980,16 +859,12 @@ class Game(arcade.Window):
 
         for sprite in self.walk_through_list:
             if sprite.ore_type == "wire":
-                sprite.powered = sprite in versorgt   # jedes wire weiss ob es strom hat
+                sprite.powered = sprite in versorgt
                 self.set_light(sprite, sprite.powered, WIRE_LIGHT_SIZE, WIRE_LIGHT_COLOR)
 
         self.powered_wires = versorgt
 
     def has_power(self, x, y):
-        # der einfache strom-check fuer eigene maschinen!
-        # gibt True wenn auf einer nachbar-kachel ein stromfuehrendes
-        # wire oder ein brennender generator sitzt. so benutzen:
-        #   if self.has_power(station.center_x, station.center_y):
         for dx, dy in [(0, 1), (0, -1), (-1, 0), (1, 0)]:
             nx = x + dx * TILE_SIZE
             ny = y + dy * TILE_SIZE
@@ -1002,14 +877,12 @@ class Game(arcade.Window):
         return False
 
     def chest_nearby(self):
-        # gibt eine kiste zurueck die nah genug am spieler ist, sonst None
         for chest in self.chest_list:
             if arcade.get_distance_between_sprites(self.player_hitbox, chest) <= CRAFT_TABLE_RANGE:
                 return chest
         return None
 
     def spill_chest(self, chest):
-        # alles was in der kiste war faellt auf den boden
         for slot in chest.items:
             for i in range(slot["count"]):
                 drop = arcade.Sprite(f"{slot['type']}.png", 0.6)
@@ -1023,24 +896,18 @@ class Game(arcade.Window):
         wire.center_x = tile_x
         wire.center_y = tile_y
         wire.ore_type = "wire"
-        wire.light = None   # das mini-licht wenn strom durchfliesst
+        wire.light = None
         self.walk_through_list.append(wire)
-        # wie redstone: das neue wire und seine nachbarn richten sich
-        # automatisch nach ihren anschluessen aus
         self.update_wire_look(wire)
         self.update_wires_around(tile_x, tile_y)
 
     def wire_at(self, x, y):
-        # das wire das genau auf dieser kachel liegt, sonst None
         for sprite in self.walk_through_list:
             if sprite.ore_type == "wire" and sprite.center_x == x and sprite.center_y == y:
                 return sprite
         return None
 
     def port_tile(self, sprite):
-        # die kachel auf die der strom-anschluss von einer maschine zeigt.
-        # ungedreht (angle 0) ist der anschluss unten, und weil angle im
-        # uhrzeigersinn dreht, dreht er sich einfach mit
         if sprite.angle == 90:
             return (sprite.center_x - TILE_SIZE, sprite.center_y)
         if sprite.angle == 180:
@@ -1050,9 +917,6 @@ class Game(arcade.Window):
         return (sprite.center_x, sprite.center_y - TILE_SIZE)
 
     def power_at_port(self, sprite):
-        # kommt am anschluss von dieser maschine strom an?
-        # entweder von einem stromfuehrenden wire, oder von einem
-        # brennenden generator dessen anschluss zurueckzeigt
         px, py = self.port_tile(sprite)
         wire = self.wire_at(px, py)
         if wire is not None and wire in self.powered_wires:
@@ -1064,35 +928,28 @@ class Game(arcade.Window):
         return False
 
     def connects_at(self, x, y, wire_x, wire_y):
-        # zaehlt diese kachel als anschluss fuer das wire bei (wire_x, wire_y)?
         if self.wire_at(x, y):
             return True
         for sprite in arcade.get_sprites_at_point((x, y), self.stone_list):
             if sprite.ore_type in NEEDS_POWER:
                 return True
-            # maschinen haben genau einen anschluss, der sich mitdreht:
-            # das wire muss auf seiner port-kachel liegen
             if sprite.ore_type in ("generator", "charging_doc", "drill"):
                 if self.port_tile(sprite) == (wire_x, wire_y):
                     return True
         return False
 
     def update_wire_look(self, wire):
-        # das wire schaut sich seine 4 nachbarn an und waehlt selber
-        # bild und drehung, wie redstone in minecraft
         wx, wy = wire.center_x, wire.center_y
         oben   = self.connects_at(wx, wy + TILE_SIZE, wx, wy)
         unten  = self.connects_at(wx, wy - TILE_SIZE, wx, wy)
         links  = self.connects_at(wx - TILE_SIZE, wy, wx, wy)
         rechts = self.connects_at(wx + TILE_SIZE, wy, wx, wy)
 
-        # genau 2 anschluesse ueber-eck -> kurve.
-        # wire_curve.png verbindet unten+links, angle dreht im uhrzeigersinn
         kurven = {
-            (False, True,  True,  False): 0,     # unten + links
-            (True,  False, True,  False): 90,    # oben + links
-            (True,  False, False, True ): 180,   # oben + rechts
-            (False, True,  False, True ): 270,   # unten + rechts
+            (False, True,  True,  False): 0,
+            (True,  False, True,  False): 90,
+            (True,  False, False, True ): 180,
+            (False, True,  False, True ): 270,
         }
         nachbarn = (oben, unten, links, rechts)
         if nachbarn in kurven:
@@ -1100,27 +957,22 @@ class Game(arcade.Window):
             wire.angle = kurven[nachbarn]
             return
 
-        # alle 4 seiten belegt -> kreuz
         if nachbarn == (True, True, True, True):
             wire.texture = self.wire_textures["kreuz"]
             wire.angle = 0
             return
 
-        # genau 3 anschluesse -> t-stueck.
-        # 3_way wire.png laesst oben frei, angle dreht im uhrzeigersinn
         t_stuecke = {
-            (False, True,  True,  True ): 0,     # oben frei
-            (True,  True,  True,  False): 90,    # rechts frei
-            (True,  False, True,  True ): 180,   # unten frei
-            (True,  True,  False, True ): 270,   # links frei
+            (False, True,  True,  True ): 0,
+            (True,  True,  True,  False): 90,
+            (True,  False, True,  True ): 180,
+            (True,  True,  False, True ): 270,
         }
         if nachbarn in t_stuecke:
             wire.texture = self.wire_textures["t"]
             wire.angle = t_stuecke[nachbarn]
             return
 
-        # alles andere wird gerade: senkrecht, ausser die anschluesse
-        # sind nur links/rechts
         wire.texture = self.wire_textures["gerade"]
         if (links or rechts) and not (oben or unten):
             wire.angle = 90
@@ -1128,7 +980,6 @@ class Game(arcade.Window):
             wire.angle = 0
 
     def update_wires_around(self, tile_x, tile_y):
-        # die wires auf den 4 nachbar-kacheln passen sich neu an
         for dx, dy in [(0, 1), (0, -1), (-1, 0), (1, 0)]:
             wire = self.wire_at(tile_x + dx * TILE_SIZE, tile_y + dy * TILE_SIZE)
             if wire:
@@ -1142,8 +993,6 @@ class Game(arcade.Window):
         torch.ore_type = "torch"
         self.walk_through_list.append(torch)
 
-        # das licht sitzt genau auf der fackel. wir merken es uns am
-        # sprite, damit wir es beim abbauen wieder ausmachen koennen
         torch.light = Light(tile_x, tile_y, TORCH_LIGHT_SIZE, TORCH_LIGHT_COLOR, "soft")
         self.light_layer.add(torch.light)
         
@@ -1151,50 +1000,42 @@ class Game(arcade.Window):
         gen = arcade.Sprite("generator.png", 1)
         gen.center_x = tile_x
         gen.center_y = tile_y
-        gen.ore_type = "generator"   # gibt sich beim abbauen selber zurueck
-        gen.fuel = {"type": None, "count": 0}   # der kohle-slot vom generator
-        gen.burn_timer = 0.0   # so viele sekunden brennt die aktuelle kohle noch
-        gen.light = None       # das licht wenn er strom macht
-        self.stone_list.append(gen)  # fest: man laeuft nicht durch
+        gen.ore_type = "generator"
+        gen.fuel = {"type": None, "count": 0}
+        gen.burn_timer = 0.0
+        gen.light = None
+        self.stone_list.append(gen)
         self.generator_list.append(gen)
         gen.angle = self.facing_angle()
-        # wires daneben duerfen sich gleich mit ihm verbinden
         self.update_wires_around(tile_x, tile_y)
 
     def facing_angle(self):
-        # in welche richtung der spieler schaut, als drehwinkel fuer
-        # maschinen. auch beim diagonalen laufen kommt was raus:
-        # dann gewinnt links/rechts
         fx, fy = self.facing
         if fx > 0:
-            return 90    # rechts
+            return 90
         if fx < 0:
-            return 270   # links
+            return 270
         if fy < 0:
-            return 180   # runter
-        return 0         # hoch
+            return 180
+        return 0
 
     def place_drill(self, tile_x, tile_y):
         drill = arcade.Sprite("drill.png", 1)
         drill.center_x = tile_x
         drill.center_y = tile_y
-        drill.ore_type = "drill"   # gibt sich beim abbauen selber zurueck
+        drill.ore_type = "drill"
         drill.angle = self.facing_angle()
         drill.powered = False
-        drill.farm_timer = 0.0     # zaehlt die zeit bis zum naechsten erz
-        # eigene faecher wie eine kiste - e macht den speicher auf
+        drill.farm_timer = 0.0
         drill.items = []
         for i in range(CHEST_ROWS * CHEST_COLS):
             drill.items.append({"type": None, "count": 0})
-        self.stone_list.append(drill)   # fest: man laeuft nicht durch
+        self.stone_list.append(drill)
         self.drill_list.append(drill)
-        self.chest_list.append(drill)   # so oeffnet e ihn wie eine kiste
-        # das wire unter ihm darf sich gleich verbinden
+        self.chest_list.append(drill)
         self.update_wires_around(tile_x, tile_y)
 
     def update_drill_machines(self, delta_time):
-        # ein drill mit strom am anschluss sammelt von alleine
-        # erze in seine faecher
         for drill in self.drill_list:
             an = self.power_at_port(drill)
             drill.powered = an
@@ -1204,18 +1045,14 @@ class Game(arcade.Window):
             drill.farm_timer += delta_time
             if drill.farm_timer >= DRILL_FARM_TIME:
                 drill.farm_timer = 0.0
-                # gleicher lostopf wie die diamant-spitzhacke
                 erz = random.choice(ORE_POOLS["pickaxe_diamond"])
                 if erz is not None:
-                    # ist der speicher gerade offen, kommen die erze in
-                    # die menue-slots - so sieht man sie live ankommen
                     if self.inventory.chest is drill:
                         self.put_in_storage(self.inventory.chest_slots, erz)
                     else:
                         self.put_in_storage(drill.items, erz)
 
     def put_in_storage(self, items, item_type):
-        # erst auf einen gleichen stapel legen, sonst leeres fach nehmen
         for slot in items:
             if slot["type"] == item_type:
                 slot["count"] += 1
@@ -1225,10 +1062,9 @@ class Game(arcade.Window):
                 slot["type"] = item_type
                 slot["count"] = 1
                 return True
-        return False   # alle faecher voll
+        return False
 
     def stones_on_tile(self, tile_x, tile_y):
-        # alle stein-drops einsammeln die auf dieser kachel liegen
         stones = []
         for drop in self.drop_list:
             if drop.item_type != "stone":
@@ -1243,42 +1079,36 @@ class Game(arcade.Window):
         doc = arcade.Sprite("charging_doc.png", 1)
         doc.center_x = tile_x
         doc.center_y = tile_y
-        doc.ore_type = "charging_doc"   # gibt sich beim abbauen selber zurueck
-        doc.light = None                # das lade-licht wenn strom reinfliesst
-        doc.powered = False             # hat es gerade strom? (macht update_charging_docs)
-        doc.drill_inside = False        # liegt gerade ein drill drin?
-        doc.charge_progress = 0.0       # wie lange der drill hier schon laedt
-        self.stone_list.append(doc)     # fest: man laeuft nicht durch
+        doc.ore_type = "charging_doc"
+        doc.light = None
+        doc.powered = False
+        doc.drill_inside = False
+        doc.charge_progress = 0.0
+        self.stone_list.append(doc)
         self.charging_doc_list.append(doc)
-        # das wire direkt drunter darf sich gleich verbinden
         self.update_wires_around(tile_x, tile_y)
 
     def update_charging_docs(self):
-        # ein charging doc leuchtet wenn strom an seinem anschluss ankommt
         for doc in self.charging_doc_list:
             an = self.power_at_port(doc)
             doc.powered = an
             self.set_light(doc, an, CHARGING_DOC_LIGHT_SIZE, CHARGING_DOC_LIGHT_COLOR)
 
     def charging_doc_at(self, x, y):
-        # das dock das genau auf dieser kachel steht, sonst None
         for doc in self.charging_doc_list:
             if doc.center_x == x and doc.center_y == y:
                 return doc
         return None
 
     def dock_with_drill_nearby(self):
-        # ein dock in reichweite in dem gerade ein drill liegt, sonst None
         for doc in self.charging_doc_list:
             if doc.drill_inside and arcade.get_distance_between_sprites(self.player_hitbox, doc) <= CRAFT_TABLE_RANGE:
                 return doc
         return None
 
     def take_drill_from_dock(self, doc):
-        # e gedrueckt: drill wieder rausnehmen.
-        # nur eine VOLLE ladung (30s) gibt die drill-power
         if not self.inventory.add_to_hotbar("iron_drill", 1):
-            return   # hotbar voll, drill bleibt drin
+            return
         if doc.charge_progress >= DRILL_CHARGE_TIME:
             self.drill_charge = DRILL_POWER_TIME
         doc.drill_inside = False
@@ -1286,14 +1116,11 @@ class Game(arcade.Window):
         doc.texture = self.charging_doc_textures["leer"]
 
     def update_drill(self, delta_time):
-        # eine volle ladung zaehlt immer runter, ob man bohrt oder nicht
         if self.drill_charge > 0:
             self.drill_charge -= delta_time
             if self.drill_charge < 0:
                 self.drill_charge = 0.0
 
-        # docks mit eingelegtem drill laden auf, aber nur mit strom.
-        # bei DRILL_CHARGE_TIME ist er voll und wartet auf abholung
         for doc in self.charging_doc_list:
             if doc.drill_inside and doc.powered and doc.charge_progress < DRILL_CHARGE_TIME:
                 doc.charge_progress += delta_time
@@ -1301,7 +1128,6 @@ class Game(arcade.Window):
                     doc.charge_progress = DRILL_CHARGE_TIME
 
     def drop_item(self):
-        # q gedrueckt: 1 item vor den spieler werfen
         item_type = self.inventory.drop_one()
         if not item_type:
             return
@@ -1329,14 +1155,12 @@ class Game(arcade.Window):
             self.place_drill(tile_x, tile_y)
             return
         if item_type == "iron_drill":
-            # vor einem leeren dock? dann wird der drill eingelegt
             doc = self.charging_doc_at(tile_x, tile_y)
             if doc is not None and not doc.drill_inside:
                 doc.drill_inside = True
                 doc.charge_progress = 0.0
                 doc.texture = self.charging_doc_textures["laedt"]
                 return
-            # sonst faellt er ganz normal auf den boden (weiter unten)
 
         drop = arcade.Sprite(f"{item_type}.png", 0.6)
         drop.center_x = tile_x + random.uniform(-DROP_JITTER, DROP_JITTER)
@@ -1344,7 +1168,6 @@ class Game(arcade.Window):
         drop.item_type = item_type
         self.drop_list.append(drop)
 
-        # liegen jetzt genug steine auf der kachel? dann wird ein block draus
         if item_type == "stone":
             stones = self.stones_on_tile(tile_x, tile_y)
             if len(stones) >= STONES_TO_BLOCK:
@@ -1353,7 +1176,6 @@ class Game(arcade.Window):
                 self.place_crafting_block(tile_x, tile_y)
 
     def camera_position(self):
-        # folgt dem spieler, bleibt aber am weltrand stehen
         x = max(SCREEN_WIDTH  / 2, min(self.player.center_x, WORLD_WIDTH  - SCREEN_WIDTH  / 2))
         y = max(SCREEN_HEIGHT / 2, min(self.player.center_y, WORLD_HEIGHT - SCREEN_HEIGHT / 2))
         return x, y
@@ -1366,7 +1188,6 @@ class Game(arcade.Window):
         if not self.mine_target:
             return
 
-        # zu weit weggelaufen? dann abbrechen
         if arcade.get_distance_between_sprites(self.player_hitbox, self.mine_target) > MINE_RANGE:
             self.mine_target   = None
             self.mine_progress = 0.0
@@ -1376,11 +1197,9 @@ class Game(arcade.Window):
         if self.mine_progress < self.mine_time():
             return
 
-        # kisten und drills verschuetten beim kaputtgehen ihren inhalt
         if self.mine_target.ore_type in ("chest", "drill"):
             self.spill_chest(self.mine_target)
 
-        # ein dock mit drill drin gibt den drill zurueck
         if self.mine_target.ore_type == "charging_doc" and self.mine_target.drill_inside:
             drop = arcade.Sprite("iron_drill.png", 0.6)
             drop.center_x = self.mine_target.center_x + random.uniform(-TILE_SIZE, TILE_SIZE)
@@ -1388,7 +1207,6 @@ class Game(arcade.Window):
             drop.item_type = "iron_drill"
             self.drop_list.append(drop)
 
-        # generatoren verschuetten ihre restliche kohle
         if self.mine_target.ore_type == "generator":
             for i in range(self.mine_target.fuel["count"]):
                 drop = arcade.Sprite("coal.png", 0.6)
@@ -1397,12 +1215,9 @@ class Game(arcade.Window):
                 drop.item_type = "coal"
                 self.drop_list.append(drop)
 
-        # stein ist kaputt -> was faellt raus?
         if self.mine_target.ore_type is not None:
-            # crafting blocks geben sich selber zurueck
             loot = self.mine_target.ore_type
         else:
-            # das werkzeug entscheidet aus welchem lostopf gezogen wird
             pool = ORE_POOLS[self.current_tool()]
             loot = random.choice(pool)
 
@@ -1413,14 +1228,11 @@ class Game(arcade.Window):
             drop.item_type = loot
             self.drop_list.append(drop)
 
-        # fackeln, generatoren und wires nehmen ihr licht mit
         if getattr(self.mine_target, "light", None) is not None:
             self.light_layer.remove(self.mine_target.light)
 
         self.mine_target.remove_from_sprite_lists()
 
-        # war es ein wire oder generator? dann richten sich die
-        # nachbar-wires neu aus
         if self.mine_target.ore_type in ("wire", "generator", "charging_doc", "drill"):
             self.update_wires_around(self.mine_target.center_x, self.mine_target.center_y)
 
@@ -1444,36 +1256,28 @@ class Game(arcade.Window):
             elif self.inventory.generator is not None:
                 self.inventory.close_generator()
             elif self.dock_with_drill_nearby() is not None:
-                # drill aus dem dock nehmen geht vor allen menues
                 self.take_drill_from_dock(self.dock_with_drill_nearby())
             elif self.near_crafting_table():
-                # menue geht nur auf wenn ein crafting table in der naehe steht
                 self.inventory.crafting_open = True
                 self.inventory.check_recipe()
                 self.mine_target   = None
                 self.mine_progress = 0.0
             else:
-                # steht eine kiste in der naehe? dann aufmachen
                 chest = self.chest_nearby()
                 if chest is not None:
                     self.inventory.open_chest(chest)
                     self.mine_target   = None
                     self.mine_progress = 0.0
                 else:
-                    # oder ein generator? dann sein menue aufmachen
                     gen = self.generator_nearby()
                     if gen is not None:
                         self.inventory.open_generator(gen)
                         self.mine_target   = None
                         self.mine_progress = 0.0
                     else:
-                        # nichts zum interagieren? dann wird abgebaut:
-                        # e gedrueckt halten baut die kachel vor dem spieler ab
                         self.e_mining = True
                         self.target_block_in_front()
         if key == arcade.key.C:
-            # c baut immer ab, auch neben tischen, kisten und docks -
-            # aber nicht solange ein menue offen ist
             menu_offen = (self.inventory.crafting_open
                           or self.inventory.chest is not None
                           or self.inventory.generator is not None)
@@ -1482,11 +1286,9 @@ class Game(arcade.Window):
                 self.target_block_in_front()
 
     def target_block_in_front(self):
-        # den block auf der kachel vor dem spieler anvisieren
         tile_x, tile_y = self.tile_in_front()
         hits = arcade.get_sprites_at_point((tile_x, tile_y), self.stone_list)
         if not hits:
-            # nichts festes da? dann vielleicht ein wire oder eine fackel
             hits = arcade.get_sprites_at_point((tile_x, tile_y), self.walk_through_list)
         if hits:
             self.mine_target   = hits[0]
@@ -1496,7 +1298,6 @@ class Game(arcade.Window):
         if key in self.keys:
             self.keys[key] = False
         if key in (arcade.key.E, arcade.key.C):
-            # erst aufhoeren wenn keine der beiden abbau-tasten mehr gehalten wird
             if not (self.keys[arcade.key.E] or self.keys[arcade.key.C]):
                 self.e_mining      = False
                 self.mine_target   = None
@@ -1508,7 +1309,6 @@ class Game(arcade.Window):
         self.inventory.track_drag(x, y)
 
     def on_mouse_scroll(self, _x, _y, _scroll_x, scroll_y):
-        # das % laesst die auswahl am ende wieder umspringen
         self.inventory.selected_slot = (self.inventory.selected_slot - int(scroll_y)) % HOTBAR_SLOTS
 
     def on_mouse_press(self, x, y, button, _modifiers):
@@ -1520,7 +1320,6 @@ class Game(arcade.Window):
                 self.inventory.start_drag(x, y, only_one=(button == arcade.MOUSE_BUTTON_RIGHT))
             return
 
-        # abgebaut wird jetzt mit e, die maus ist nur noch fuer die menues
 
     def on_mouse_release(self, x, y, button, _modifiers):
         if button not in (arcade.MOUSE_BUTTON_LEFT, arcade.MOUSE_BUTTON_RIGHT):
@@ -1532,8 +1331,6 @@ class Game(arcade.Window):
             self.inventory.end_drag(x, y)
 
     def player_texture(self):
-        # sucht das passende bild zur blickrichtung aus.
-        # bei diagonalem laufen gewinnt die seitenansicht
         fx, fy = self.facing
         if fx != 0:
             frames = self.player_textures[(fx, 0)]
@@ -1545,35 +1342,29 @@ class Game(arcade.Window):
         sprinting = self.keys[arcade.key.LSHIFT] or self.keys[arcade.key.RSHIFT]
         speed = SPRINT_SPEED if sprinting else WALK_SPEED
 
-        # True zaehlt als 1 und False als 0, D minus A gibt also -1, 0 oder 1
         dir_x = self.keys[arcade.key.D] - self.keys[arcade.key.A]
         dir_y = self.keys[arcade.key.W] - self.keys[arcade.key.S]
         if dir_x or dir_y:
             self.facing = (dir_x, dir_y)
-            # beim laufen zwischen den 2 frames hin und her wechseln
             self.walk_timer += delta_time
             if self.walk_timer >= PLAYER_FRAME_TIME:
                 self.walk_timer -= PLAYER_FRAME_TIME
                 self.walk_frame = 1 - self.walk_frame
         else:
-            # stillstehen: immer der erste frame
             self.walk_frame = 0
             self.walk_timer = 0.0
         self.player.texture = self.player_texture()
 
         self.player_hitbox.change_x = dir_x * speed
         self.player_hitbox.change_y = dir_y * speed
-        self.physics.update()   # bewegt die hitbox und stoppt sie an steinen
+        self.physics.update()
 
-        # das sichtbare bild und das licht folgen der hitbox
         self.player.center_x = self.player_hitbox.center_x
         self.player.center_y = self.player_hitbox.center_y
         self.player_light.position = self.player.position
         
         
 
-        # e gedrueckt halten: nach jedem kaputten block gleich den
-        # naechsten auf der kachel vor dem spieler anvisieren
         menu_offen = (self.inventory.crafting_open
                       or self.inventory.chest is not None
                       or self.inventory.generator is not None)
@@ -1588,7 +1379,6 @@ class Game(arcade.Window):
         self.update_drill(delta_time)
         self.update_drill_machines(delta_time)
 
-        # drops einsammeln die der spieler beruehrt
         for drop in arcade.check_for_collision_with_list(self.player_hitbox, self.drop_list):
             if self.inventory.add_to_hotbar(drop.item_type, 1):
                 drop.remove_from_sprite_lists()
@@ -1599,8 +1389,6 @@ class Game(arcade.Window):
         self.clear()
 
         self.camera.use()
-        # alles in diesem with-block landet erst in der licht-schicht,
-        # nicht auf dem bildschirm. beim draw danach wird es beleuchtet
         with self.light_layer:
             self.stone_list.draw()
             self.walk_through_list.draw()
@@ -1608,17 +1396,14 @@ class Game(arcade.Window):
             self.player_list.draw(pixelated=True)
         self.light_layer.draw(ambient_color=AMBIENT_COLOR)
 
-        # rahmen um die kachel vor dem spieler (da landet alles was man mit q droppt)
         frame = self.inventory.images["slot"]
         tx, ty = self.tile_in_front()
         arcade.draw_texture_rect(frame, arcade.XYWH(tx, ty, TILE_SIZE, TILE_SIZE))
 
-        # rahmen um den block der gerade abgebaut wird
         if self.mine_target:
             arcade.draw_texture_rect(frame, arcade.XYWH(
                 self.mine_target.center_x, self.mine_target.center_y, TILE_SIZE, TILE_SIZE))
 
-        # lade-balken ueber docks in denen gerade der drill laedt
         for doc in self.charging_doc_list:
             if doc.charge_progress > 0:
                 ratio = doc.charge_progress / DRILL_CHARGE_TIME
@@ -1627,7 +1412,6 @@ class Game(arcade.Window):
                 arcade.draw_lrbt_rectangle_filled(bx - 16, bx - 16 + 32 * ratio, by - 3, by + 3, arcade.color.GREEN)
                 arcade.draw_lrbt_rectangle_outline(bx - 16, bx + 16, by - 3, by + 3, arcade.color.WHITE, 1)
 
-        # fortschritts-balken ueber dem stein
         if self.mine_target:
             ratio = self.mine_progress / self.mine_time()
             bx = self.mine_target.center_x
@@ -1638,7 +1422,6 @@ class Game(arcade.Window):
         self.gui_camera.use()
         self.inventory.draw()
 
-        # restliche drill-power anzeigen wenn man den drill haelt
         if self.inventory.hotbar[self.inventory.selected_slot]["type"] == "iron_drill":
             if self.drill_charge > 0:
                 text = "Drill: " + str(int(self.drill_charge) + 1) + "s"
@@ -1652,4 +1435,3 @@ class Game(arcade.Window):
 
 Game()
 arcade.run()
-#iron_drill.png soll gecharged werden wenn man auf das charging doc geht dan changed das dock die texture zucharging_doc_id und es kann sich für 30 sekunden aufladen dann ist es voll und dann hat man den sehr guten drill für 2 min dan geht der charge aus und dann musst du es wieder aufladen.
