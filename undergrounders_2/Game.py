@@ -213,6 +213,10 @@ NEEDS_POWER = ["energy_station"]
 
 CRAFT_TABLE_RANGE = 64
 
+RECIPE_ICON_SIZE = 36
+RECIPE_ICON_GAP  = 4
+RECIPE_COLS      = 4
+
 
 class Inventory:
     def __init__(self):
@@ -305,6 +309,15 @@ class Inventory:
                 y = top - row * (SLOT_SIZE + SLOT_GAP)
                 self.chest_slots.append(self.new_slot("chest", x, y))
 
+        self.recipe_slots = []
+        recipe_start_x = 20 + RECIPE_ICON_SIZE / 2
+        for i, (result, _pattern) in enumerate(RECIPES):
+            col = i % RECIPE_COLS
+            row = i // RECIPE_COLS
+            x = recipe_start_x + col * (RECIPE_ICON_SIZE + RECIPE_ICON_GAP)
+            y = top - row * (RECIPE_ICON_SIZE + RECIPE_ICON_GAP)
+            self.recipe_slots.append({"index": i, "result": result, "x": x, "y": y})
+
     def clear_slot(self, slot):
         slot["type"] = None
         slot["count"] = 0
@@ -343,6 +356,16 @@ class Inventory:
                 return True
         return False
 
+    def take_from_hotbar(self, item_type, max_count=None):
+        for slot in self.hotbar:
+            if slot["type"] == item_type:
+                take = slot["count"] if max_count is None else min(max_count, slot["count"])
+                slot["count"] = slot["count"] - take
+                if slot["count"] <= 0:
+                    self.clear_slot(slot)
+                return take
+        return 0
+
 
     def mouse_in_slot(self, x, y, slot):
         links  = slot["x"] - SLOT_SIZE / 2
@@ -367,6 +390,52 @@ class Inventory:
             if self.mouse_in_slot(x, y, slot):
                 return slot
         return None
+
+    def recipe_index_at(self, x, y):
+        if not self.crafting_open:
+            return None
+        for slot in self.recipe_slots:
+            links  = slot["x"] - RECIPE_ICON_SIZE / 2
+            rechts = slot["x"] + RECIPE_ICON_SIZE / 2
+            unten  = slot["y"] - RECIPE_ICON_SIZE / 2
+            oben   = slot["y"] + RECIPE_ICON_SIZE / 2
+            if links <= x <= rechts and unten <= y <= oben:
+                return slot["index"]
+        return None
+
+    def fill_recipe(self, index):
+        result, pattern = RECIPES[index]
+
+        for row in self.grid:
+            for slot in row:
+                if slot["type"] is not None:
+                    self.add_to_hotbar(slot["type"], slot["count"])
+                    self.clear_slot(slot)
+
+        letter_to_item = {letter: item for item, letter in LETTERS.items()}
+
+        for r, line in enumerate(pattern):
+            for c, letter in enumerate(line):
+                if letter == "." or r >= GRID_ROWS or c >= GRID_COLS:
+                    continue
+                item = letter_to_item.get(letter)
+                if item is None:
+                    continue
+                got = self.take_from_hotbar(item, 1)
+                if got > 0:
+                    slot = self.grid[r][c]
+                    slot["type"]  = item
+                    slot["count"] = got
+
+        needed = COAL_COST.get(result, 0)
+        have = self.fuel["count"] if self.fuel["type"] == "coal" else 0
+        if have < needed:
+            got = self.take_from_hotbar("coal", needed - have)
+            if got > 0:
+                self.fuel["type"]  = "coal"
+                self.fuel["count"] = have + got
+
+        self.check_recipe()
 
     def start_drag(self, x, y, only_one=False):
         slot = self.slot_at(x, y)
@@ -600,6 +669,16 @@ class Inventory:
                     arcade.color.ORANGE, font_size=12, anchor_x="center",
                 )
 
+            for slot in self.recipe_slots:
+                arcade.draw_texture_rect(
+                    self.images["slot"],
+                    arcade.XYWH(slot["x"], slot["y"], RECIPE_ICON_SIZE, RECIPE_ICON_SIZE),
+                )
+                arcade.draw_texture_rect(
+                    self.images[slot["result"]],
+                    arcade.XYWH(slot["x"], slot["y"], RECIPE_ICON_SIZE - 6, RECIPE_ICON_SIZE - 6),
+                )
+
         if self.chest is not None:
             first = self.chest_slots[0]
             last = self.chest_slots[-1]
@@ -672,6 +751,7 @@ class Game(arcade.Window):
             arcade.key.C: False,
         }
         self.e_mining = False
+        self.mouse_mining = False
 
         self.mine_target   = None
         self.mine_progress = 0.0
@@ -908,6 +988,8 @@ class Game(arcade.Window):
         return None
 
     def port_tile(self, sprite):
+        if sprite.ore_type == "generator":
+            return (sprite.center_x - TILE_SIZE, sprite.center_y)
         if sprite.angle == 90:
             return (sprite.center_x - TILE_SIZE, sprite.center_y)
         if sprite.angle == 180:
@@ -1181,7 +1263,7 @@ class Game(arcade.Window):
         return x, y
 
     def give_all_ores(self):
-        for ore in ["stone", "coal", "copper", "iron", "diamond", "wire", "generator", "drill" ]:
+        for ore in ["stone", "coal", "copper", "iron", "diamond" ]:
             self.inventory.add_to_hotbar(ore, 9)
 
     def update_mining(self, delta_time):
@@ -1298,7 +1380,7 @@ class Game(arcade.Window):
         if key in self.keys:
             self.keys[key] = False
         if key in (arcade.key.E, arcade.key.C):
-            if not (self.keys[arcade.key.E] or self.keys[arcade.key.C]):
+            if not (self.keys[arcade.key.E] or self.keys[arcade.key.C] or self.mouse_mining):
                 self.e_mining      = False
                 self.mine_target   = None
                 self.mine_progress = 0.0
@@ -1316,9 +1398,19 @@ class Game(arcade.Window):
                      or self.inventory.chest is not None
                      or self.inventory.generator is not None)
         if menu_open:
+            if self.inventory.crafting_open and button == arcade.MOUSE_BUTTON_LEFT:
+                index = self.inventory.recipe_index_at(x, y)
+                if index is not None:
+                    self.inventory.fill_recipe(index)
+                    return
             if button in (arcade.MOUSE_BUTTON_LEFT, arcade.MOUSE_BUTTON_RIGHT):
                 self.inventory.start_drag(x, y, only_one=(button == arcade.MOUSE_BUTTON_RIGHT))
             return
+
+        if button == arcade.MOUSE_BUTTON_LEFT:
+            self.mouse_mining = True
+            self.e_mining = True
+            self.target_block_in_front()
 
 
     def on_mouse_release(self, x, y, button, _modifiers):
@@ -1329,6 +1421,14 @@ class Game(arcade.Window):
                 or self.inventory.chest is not None
                 or self.inventory.generator is not None):
             self.inventory.end_drag(x, y)
+            return
+
+        if button == arcade.MOUSE_BUTTON_LEFT:
+            self.mouse_mining = False
+            if not (self.keys[arcade.key.E] or self.keys[arcade.key.C]):
+                self.e_mining      = False
+                self.mine_target   = None
+                self.mine_progress = 0.0
 
     def player_texture(self):
         fx, fy = self.facing
@@ -1368,7 +1468,7 @@ class Game(arcade.Window):
         menu_offen = (self.inventory.crafting_open
                       or self.inventory.chest is not None
                       or self.inventory.generator is not None)
-        taste_gehalten = self.keys[arcade.key.E] or self.keys[arcade.key.C]
+        taste_gehalten = self.keys[arcade.key.E] or self.keys[arcade.key.C] or self.mouse_mining
         if self.e_mining and taste_gehalten and not menu_offen and self.mine_target is None:
             self.target_block_in_front()
 
