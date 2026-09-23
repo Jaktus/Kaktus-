@@ -1,0 +1,25 @@
+[remap]
+
+importer="wavefront_obj"
+importer_version=1
+type="Mesh"
+uid="uid://t02dtrbsv576"
+path="res://.godot/imported/tree.obj-1d73921f687b8ec09e7a9b4e274a601b.mesh"
+
+[deps]
+
+files=["res://.godot/imported/tree.obj-1d73921f687b8ec09e7a9b4e274a601b.mesh"]
+
+source_file="res://KayKit_BlockBits_1.0_FREE/Assets/obj/tree.obj"
+dest_files=["res://.godot/imported/tree.obj-1d73921f687b8ec09e7a9b4e274a601b.mesh", "res://.godot/imported/tree.obj-1d73921f687b8ec09e7a9b4e274a601b.mesh"]
+
+[params]
+
+generate_tangents=true
+generate_lods=true
+generate_shadow_mesh=true
+generate_lightmap_uv2=false
+generate_lightmap_uv2_texel_size=0.2
+scale_mesh=Vector3(1, 1, 1)
+offset_mesh=Vector3(0, 0, 0)
+force_disable_mesh_compression=false
