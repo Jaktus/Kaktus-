@@ -4,13 +4,13 @@ extends CharacterBody3D
 const SPEED = 5.0
 const DASH = 20
 var sprint = 2.5
-const JUMP_VELOCITY = 6.1
+const JUMP_VELOCITY = 7.1
 
 @export var stamina_bar: ProgressBar
-var max_stamina = 100.0
-var stamina = 100.0
-var drain = 30.0   # per second while sprinting
-var regen = 15.0   # per second while not sprinting
+var max_stamina = 50.0
+var stamina = 50.0
+var drain = 30.0   
+var regen = 5.0   
 
 
 func _physics_process(delta: float) -> void:
@@ -50,3 +50,16 @@ func _physics_process(delta: float) -> void:
 
 func _on_area_3d_body_shape_entered(body_rid: RID, body: Node3D, body_shape_index: int, local_shape_index: int) -> void:
 	get_tree().reload_current_scene()
+
+
+func _on_area_3d_2_body_shape_entered(body_rid: RID, body: Node3D, body_shape_index: int, local_shape_index: int) -> void:
+	velocity.y = 20
+	
+	
+	
+
+
+func _on_tot_body_shape_entered(body_rid: RID, body: Node3D, body_shape_index: int, local_shape_index: int) -> void:
+	get_tree().reload_current_scene()
+
+	
