@@ -1,9 +1,10 @@
-[gd_scene load_steps=16 format=3 uid="uid://dnhb014v48nvi"]
+[gd_scene load_steps=19 format=3 uid="uid://dnhb014v48nvi"]
 
 [ext_resource type="MeshLibrary" uid="uid://b7bdtv6l5ppt8" path="res://meshbib.tres" id="1_a202f"]
 [ext_resource type="Script" uid="uid://d0ri8tfkfpjaw" path="res://character_body_3d.gd" id="2_noarx"]
 [ext_resource type="Script" uid="uid://drwfk03rsn6fq" path="res://camera_3d.gd" id="3_a0tk4"]
 [ext_resource type="Script" uid="uid://c7bx8pby0iacm" path="res://area_3d.gd" id="4_r3fl7"]
+[ext_resource type="Script" uid="uid://dg0kebwq7qugu" path="res://shop.gd" id="5_jka67"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_r3fl7"]
 height = 2.49874
@@ -35,7 +36,12 @@ size = Vector3(1.44629, 2.65918, 1.43103)
 size = Vector3(25.9158, 3.66282, 16.5618)
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_6iypd"]
-size = Vector3(3.75562, 3.52869, 1.64339)
+size = Vector3(4.01193, 3.66815, 1.78507)
+
+[sub_resource type="PlaceholderTexture2D" id="PlaceholderTexture2D_i5arm"]
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_wc5p8"]
+texture = SubResource("PlaceholderTexture2D_i5arm")
 
 [node name="Node3D" type="Node3D"]
 
@@ -134,11 +140,40 @@ shape = SubResource("BoxShape3D_3v7ru")
 debug_color = Color(0.541805, 0, 0.0477, 0.42)
 
 [node name="Area3D3" type="Area3D" parent="."]
+script = ExtResource("5_jka67")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Area3D3"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -142.039, 104.882, 129.266)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -142.026, 104.812, 129.337)
 shape = SubResource("BoxShape3D_6iypd")
+
+[node name="Panel2" type="Panel" parent="."]
+texture_filter = 1
+anchors_preset = -1
+anchor_left = 0.405
+anchor_top = 0.437
+anchor_right = 0.405
+anchor_bottom = 0.437
+offset_left = -217.56
+offset_top = -146.176
+offset_right = 456.44
+offset_bottom = 253.824
+theme_override_styles/panel = SubResource("StyleBoxTexture_wc5p8")
+
+[node name="Button" type="Button" parent="Panel2"]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.114
+anchor_top = 0.17
+anchor_right = 0.243
+anchor_bottom = 0.361
+offset_left = -34.836
+offset_top = -10.0
+offset_right = 456.218
+offset_bottom = -17.4
+text = "waffe"
 
 [connection signal="body_shape_entered" from="Area3D" to="CharacterBody3D" method="_on_area_3d_body_shape_entered"]
 [connection signal="body_shape_entered" from="Area3D2" to="CharacterBody3D" method="_on_area_3d_2_body_shape_entered"]
 [connection signal="body_shape_entered" from="tot" to="CharacterBody3D" method="_on_tot_body_shape_entered"]
+[connection signal="body_shape_entered" from="Area3D3" to="CharacterBody3D" method="_on_area_3d_3_body_shape_entered"]
+[connection signal="visibility_changed" from="Panel2" to="CharacterBody3D" method="_on_panel_2_visibility_changed"]

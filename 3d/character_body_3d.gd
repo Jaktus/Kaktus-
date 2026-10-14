@@ -63,3 +63,12 @@ func _on_tot_body_shape_entered(body_rid: RID, body: Node3D, body_shape_index: i
 	get_tree().reload_current_scene()
 
 	
+
+
+
+func _on_area_3d_3_body_shape_entered(body_rid: RID, body: Node3D, body_shape_index: int, local_shape_index: int) -> void:
+	var shop = true
+
+
+func _on_panel_2_visibility_changed() -> void:
+	Panel2.visible = true

@@ -1,0 +1,25 @@
+[remap]
+
+importer="wavefront_obj"
+importer_version=1
+type="Mesh"
+uid="uid://b5ju2gh0yxfw4"
+path="res://.godot/imported/striped_block_blue.obj-4dd409ce5190f5cba01d917a9eb15feb.mesh"
+
+[deps]
+
+files=["res://.godot/imported/striped_block_blue.obj-4dd409ce5190f5cba01d917a9eb15feb.mesh"]
+
+source_file="res://KayKit_BlockBits_1.0_FREE/Assets/obj/striped_block_blue.obj"
+dest_files=["res://.godot/imported/striped_block_blue.obj-4dd409ce5190f5cba01d917a9eb15feb.mesh", "res://.godot/imported/striped_block_blue.obj-4dd409ce5190f5cba01d917a9eb15feb.mesh"]
+
+[params]
+
+generate_tangents=true
+generate_lods=true
+generate_shadow_mesh=true
+generate_lightmap_uv2=false
+generate_lightmap_uv2_texel_size=0.2
+scale_mesh=Vector3(1, 1, 1)
+offset_mesh=Vector3(0, 0, 0)
+force_disable_mesh_compression=false
