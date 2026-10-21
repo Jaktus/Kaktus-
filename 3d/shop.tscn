@@ -1,0 +1,52 @@
+[gd_scene format=3 uid="uid://el0pqqgphswe"]
+
+[ext_resource type="Script" uid="uid://cu17ilcrtgwmn" path="res://ESC.gd" id="1_viryw"]
+
+[sub_resource type="PlaceholderTexture2D" id="PlaceholderTexture2D_i5arm"]
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_e7rdd"]
+texture = SubResource("PlaceholderTexture2D_i5arm")
+
+[node name="Control" type="Control" unique_id=1162656011]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Panel2" type="Panel" parent="." unique_id=2098513291]
+texture_filter = 1
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.405
+anchor_top = 0.437
+anchor_right = 0.405
+anchor_bottom = 0.437
+offset_left = -505.56
+offset_top = -320.176
+offset_right = 690.44
+offset_bottom = 405.824
+offset_transform_enabled = true
+theme_override_styles/panel = SubResource("StyleBoxTexture_e7rdd")
+
+[node name="Button" type="Button" parent="Panel2" unique_id=556099106]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.114
+anchor_top = 0.17
+anchor_right = 0.243
+anchor_bottom = 0.361
+offset_left = 123.356
+offset_top = -14.260002
+offset_right = 614.41003
+offset_bottom = -21.660004
+offset_transform_enabled = true
+text = "waffe"
+
+[node name="Button" type="Button" parent="." unique_id=1631781844]
+layout_mode = 0
+offset_right = 82.0
+offset_bottom = 75.0
+text = "ESC"
+script = ExtResource("1_viryw")

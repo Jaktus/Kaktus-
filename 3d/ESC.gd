@@ -1,6 +1,12 @@
-extends Area3D
-@onready var camera = $Collisionshape3D
+extends Button
+
 
 # Called when the node enters the scene tree for the first time.
 func _ready() -> void:
 	pass # Replace with function body.
+
+
+
+func _process(delta: float) -> void:
+	if button_pressed:
+		get_tree().change_scene_to_file(node_3d.tscn)
